@@ -1,0 +1,33 @@
+[package]
+name = "garbage_project"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = []
+debug = ["bevy-inspector-egui"]
+
+[dependencies]
+# Physics
+avian3d = "0.1"
+# Enum iter
+strum = { version = "0.26", features = ["derive"] }
+
+[dependencies.bevy]
+version = "0.14"
+
+[dependencies.bevy-inspector-egui]
+version = "0.25"
+optional = true
+
+# Enable max optimizations for dependencies, but not for our code:
+[profile.dev.package."*"]
+opt-level = 3
+
+# Enable only a small amount of optimization in debug mode
+[profile.dev]
+opt-level = 1
+
+[profile.release]
+codegen-units = 1
+panic = "abort"
