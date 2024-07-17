@@ -1,5 +1,10 @@
 use avian3d::prelude::*;
 use bevy::prelude::*;
+use movement::PlayerMovementBundle;
+use std::fmt::Display;
+
+mod actions;
+mod movement;
 
 use crate::ObjectLayer;
 
@@ -20,28 +25,57 @@ impl Plugin for PlayerPlugin {
     }
 }
 
-#[derive(Debug, Component, Deref, Reflect)]
-pub struct Player(u8);
+#[derive(Debug, Clone, Copy, Reflect)]
+pub enum GameController {
+    KeyBoard,
+    Gamepad(Gamepad),
+}
+
+impl Display for GameController {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::KeyBoard => String::from("Keyboard"),
+                Self::Gamepad(gamepad) => format!("Gamepad {}", gamepad.id),
+            }
+        )
+    }
+}
+
+#[derive(Debug, Component, Reflect)]
+pub struct Player {
+    pub id: u8,
+    pub controller: GameController,
+}
 
 #[derive(Bundle)]
 pub struct PlayerBundle {
     pub player: Player,
     pub name: Name,
     pub health: Health,
+    // PBR
     pub pbr: PbrBundle,
+    // Physics
     pub rigidbody: RigidBody,
     pub collider: Collider,
     pub layer: CollisionLayers,
+    // Input
+    pub movement: PlayerMovementBundle,
 }
 
 impl PlayerBundle {
-    pub fn new(player: u8, assets: &PlayerAssets) -> Self {
+    pub fn new(player: u8, controller: GameController, assets: &PlayerAssets) -> Self {
         if player >= MAX_PLAYERS {
             panic!("{MAX_PLAYERS} players supported");
         }
         Self {
-            player: Player(player),
-            name: Name::new(format!("Player {}", player + 1)),
+            player: Player {
+                id: player,
+                controller,
+            },
+            name: Name::new(format!("Player {}: {controller}", player + 1,)),
             health: Health::new(BASE_PLAYER_HEALTH),
             pbr: PbrBundle {
                 mesh: assets.mesh.clone_weak(),
@@ -51,12 +85,14 @@ impl PlayerBundle {
             rigidbody: RigidBody::Kinematic,
             collider: Collider::capsule(PLAYER_RADIUS, PLAYER_HEIGHT),
             layer: CollisionLayers::new(ObjectLayer::Player, LayerMask::ALL),
+            movement: PlayerMovementBundle::new(30.0, 0.9, controller),
         }
     }
 }
 
 #[derive(Resource)]
 pub struct PlayerAssets {
+    pub colors: [Color; MAX_PLAYERS as usize],
     pub mesh: Handle<Mesh>,
     pub materials: [Handle<StandardMaterial>; MAX_PLAYERS as usize],
 }
@@ -99,6 +135,10 @@ impl FromWorld for PlayerAssets {
         });
         let mut meshes = world.resource_mut::<Assets<Mesh>>();
         let mesh = meshes.add(Capsule3d::new(PLAYER_RADIUS, PLAYER_HEIGHT));
-        Self { materials, mesh }
+        Self {
+            colors,
+            materials,
+            mesh,
+        }
     }
 }

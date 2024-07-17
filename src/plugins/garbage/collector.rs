@@ -100,6 +100,7 @@ impl Collector {
             }
         }
     }
+
     pub fn throw_collected(
         &mut self,
         entity: Entity,
