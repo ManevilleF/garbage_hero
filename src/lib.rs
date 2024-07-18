@@ -41,7 +41,13 @@ pub fn run() -> AppExit {
     }))
     .init_state::<GameState>()
     .add_plugins(TemporalAntiAliasPlugin)
-    .add_plugins((LightPlugin, GarbagePlugin, PlayerPlugin, CommonPlugin));
+    .add_plugins((
+        LightPlugin,
+        GarbagePlugin,
+        PlayerPlugin,
+        CommonPlugin,
+        CameraPlugin,
+    ));
     #[cfg(feature = "debug")]
     app.add_plugins((
         bevy_inspector_egui::quick::WorldInspectorPlugin::default(),

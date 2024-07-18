@@ -2,7 +2,7 @@ use bevy::{log, prelude::*, window::PrimaryWindow};
 use leafwing_input_manager::action_state::ActionState;
 use strum::EnumIter;
 
-use crate::camera::GameCamera;
+use crate::GameCamera;
 
 use super::{input::PlayerInputAction, GameController, Player};
 
