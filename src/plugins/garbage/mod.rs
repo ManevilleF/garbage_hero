@@ -1,9 +1,11 @@
 use bevy::prelude::*;
 
 mod collector;
+mod distribution;
 mod items;
 
 use collector::*;
+use distribution::*;
 use items::*;
 
 pub struct GarbagePlugin;
@@ -13,8 +15,15 @@ impl Plugin for GarbagePlugin {
         app.init_resource::<GarbageAssets>()
             .register_type::<GarbageItem>()
             .register_type::<Collected>()
-            .register_type::<Collector>();
-        app.add_systems(FixedUpdate, (Collector::update_collected_position))
-            .add_systems(PostUpdate, (Collector::update_radius));
+            .register_type::<Collector>()
+            .register_type::<CircularDistribution>();
+        app.add_systems(
+            FixedUpdate,
+            (
+                Collector::update_collected_position,
+                Collector::collect_items,
+            ),
+        )
+        .add_systems(PostUpdate, Collector::update_radius);
     }
 }

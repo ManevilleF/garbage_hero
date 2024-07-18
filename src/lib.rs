@@ -1,5 +1,5 @@
 #![warn(clippy::all, clippy::nursery)]
-#![allow(dead_code)]
+#![allow(dead_code, clippy::type_complexity)]
 use avian3d::prelude::PhysicsLayer;
 use bevy::{core_pipeline::experimental::taa::TemporalAntiAliasPlugin, prelude::*};
 

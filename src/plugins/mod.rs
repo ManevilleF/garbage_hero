@@ -1,3 +1,4 @@
+pub mod camera;
 mod common;
 mod garbage;
 mod light;

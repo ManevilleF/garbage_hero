@@ -1,14 +1,14 @@
-use avian3d::prelude::*;
-use bevy::prelude::*;
-use movement::PlayerMovementBundle;
-use std::fmt::Display;
-
-mod actions;
-mod movement;
-
-use crate::ObjectLayer;
-
 use super::common::Health;
+use bevy::prelude::*;
+
+mod input;
+mod movement;
+mod skills;
+
+pub use input::GameController;
+use input::{PlayerInputBundle, PlayerInputPlugin};
+use movement::{PlayerMovementBundle, PlayerMovementPlugin};
+use skills::{PlayerSkillsBundle, PlayerSkillsPlugin};
 
 const MAX_PLAYERS: u8 = 24;
 const PLAYER_RADIUS: f32 = 0.5;
@@ -20,27 +20,9 @@ pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<PlayerAssets>()
+        app.add_plugins((PlayerInputPlugin, PlayerMovementPlugin, PlayerSkillsPlugin))
+            .init_resource::<PlayerAssets>()
             .register_type::<Player>();
-    }
-}
-
-#[derive(Debug, Clone, Copy, Reflect)]
-pub enum GameController {
-    KeyBoard,
-    Gamepad(Gamepad),
-}
-
-impl Display for GameController {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::KeyBoard => String::from("Keyboard"),
-                Self::Gamepad(gamepad) => format!("Gamepad {}", gamepad.id),
-            }
-        )
     }
 }
 
@@ -55,14 +37,10 @@ pub struct PlayerBundle {
     pub player: Player,
     pub name: Name,
     pub health: Health,
-    // PBR
-    pub pbr: PbrBundle,
-    // Physics
-    pub rigidbody: RigidBody,
-    pub collider: Collider,
-    pub layer: CollisionLayers,
-    // Input
+    pub input: PlayerInputBundle,
     pub movement: PlayerMovementBundle,
+    pub skills: PlayerSkillsBundle,
+    pub pbr: PbrBundle,
 }
 
 impl PlayerBundle {
@@ -77,15 +55,14 @@ impl PlayerBundle {
             },
             name: Name::new(format!("Player {}: {controller}", player + 1,)),
             health: Health::new(BASE_PLAYER_HEALTH),
+            input: PlayerInputBundle::new(controller),
+            movement: PlayerMovementBundle::new(30.0, 0.9),
+            skills: PlayerSkillsBundle::new(),
             pbr: PbrBundle {
                 mesh: assets.mesh.clone_weak(),
                 material: assets.materials[player as usize].clone_weak(),
                 ..default()
             },
-            rigidbody: RigidBody::Kinematic,
-            collider: Collider::capsule(PLAYER_RADIUS, PLAYER_HEIGHT),
-            layer: CollisionLayers::new(ObjectLayer::Player, LayerMask::ALL),
-            movement: PlayerMovementBundle::new(30.0, 0.9, controller),
         }
     }
 }

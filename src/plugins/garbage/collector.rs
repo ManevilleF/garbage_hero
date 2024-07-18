@@ -1,16 +1,13 @@
 use avian3d::prelude::*;
 use bevy::{
-    ecs::{
-        component::{ComponentHooks, StorageType},
-        entity::EntityHashSet,
-    },
+    ecs::component::{ComponentHooks, StorageType},
     log,
     prelude::*,
 };
 
 use crate::ObjectLayer;
 
-use super::GarbageItem;
+use super::{ArcDistribution, CircularDistribution, GarbageItem};
 
 #[derive(Debug, Reflect)]
 pub struct Collected {
@@ -42,7 +39,7 @@ impl Component for Collected {
                     return;
                 };
                 // Can be already removed
-                collector.collected.remove(&entity);
+                collector.remove(entity);
 
                 let Some(mut layer) = world.get_mut::<CollisionLayers>(entity) else {
                     log::error!("on_add hook triggered for {entity:?} without `CollisionLayers`");
@@ -57,22 +54,29 @@ impl Component for Collected {
 
 #[derive(Debug, Component, Reflect)]
 pub struct Collector {
-    pub base_radius: f32,
-    pub base_strength: usize,
-    pub collected: EntityHashSet,
+    pub circle_distrib: CircularDistribution,
+    pub arc_distrib: ArcDistribution,
+    collected: Vec<Entity>,
 }
 
 impl Collector {
-    const RADIUS_COEFFICIENT: f32 = 0.1;
     const ROTATION_SPEED: f32 = 10.0;
+    const COLLECTED_SPEED: f32 = 50.0;
 
-    pub fn strength(&self) -> usize {
-        self.base_strength
-            .saturating_add(usize::MAX - self.collected.len())
+    pub fn new(min_radius: f32, max_distance: f32) -> Self {
+        Self {
+            circle_distrib: CircularDistribution::new(min_radius, max_distance),
+            arc_distrib: ArcDistribution::new(min_radius, max_distance),
+            collected: Vec::new(),
+        }
     }
 
     pub fn radius(&self) -> f32 {
-        (self.collected.len() as f32).mul_add(Self::RADIUS_COEFFICIENT, self.base_radius)
+        self.circle_distrib.radius(self.collected.len())
+    }
+
+    pub fn tick_circle_rotation(&mut self, dt: f32) {
+        self.circle_distrib.rotate(dt * Self::ROTATION_SPEED);
     }
 
     pub fn update_radius(mut collectors: Query<(&mut Transform, &Self), Changed<Self>>) {
@@ -81,40 +85,64 @@ impl Collector {
         }
     }
 
+    pub fn insert(&mut self, entity: Entity) {
+        self.collected.push(entity);
+    }
+
+    pub fn remove(&mut self, entity: Entity) -> Option<Entity> {
+        let index = self.collected.iter().position(|e| *e == entity)?;
+        Some(self.collected.remove(index))
+    }
+
     pub fn update_collected_position(
         time: Res<Time>,
-        mut collected: Query<&mut Transform, (With<Collected>, With<GarbageItem>)>,
-        collectors: Query<(&Transform, &Self)>,
+        mut collected: Query<
+            (&Transform, &mut LinearVelocity),
+            (With<Collected>, With<GarbageItem>),
+        >,
+        mut collectors: Query<(&Transform, &mut Self)>,
     ) {
-        for (center_tr, collector) in &collectors {
+        let dt = time.delta_seconds();
+        for (center_tr, mut collector) in &mut collectors {
+            collector.tick_circle_rotation(dt);
             let mut collected = collected.iter_many_mut(&collector.collected);
-            while let Some(mut tr) = collected.fetch_next() {
-                let rotation =
-                    Quat::from_axis_angle(Vec3::Y, Self::ROTATION_SPEED * time.delta_seconds());
-                let desired_position =
-                    center_tr.translation + rotation.mul_vec3(Vec3::Z * collector.radius());
+            let positions = collector.circle_distrib.points();
+            let mut i = 0_usize;
+            while let Some((tr, mut linvel)) = collected.fetch_next() {
+                let target = positions[i];
+                let target = Vec3::new(target.x, center_tr.translation.y, target.y);
+                let delta = tr.translation - target;
 
-                // TODO: Add elasticity or use velocity instead
-                tr.translation = desired_position;
-                tr.rotation = rotation;
+                linvel.0 = delta * Self::COLLECTED_SPEED;
+                i += 1;
             }
         }
     }
 
-    pub fn throw_collected(
-        &mut self,
-        entity: Entity,
-        direction: Dir3,
-        force: f32,
-    ) -> impl FnOnce(&mut World) {
-        if !self.collected.remove(&entity) {
-            panic!("Can't throw non collected entity");
-        }
-        move |world| {
+    pub fn throw_collected(&self, direction: Dir2, force: f32) -> Option<impl FnOnce(&mut World)> {
+        let (index, _) = self.circle_distrib.find_closest_aligned_point(direction)?;
+        let Some(entity) = self.collected.get(index).copied() else {
+            log::error!("Collector and circular distribution are out of sync, No entity found at index {index:?}");
+            return None;
+        };
+        let direction = Vec3::new(direction.x, 0.0, direction.y);
+        Some(move |world: &mut World| {
             let mut entity_cmd = world.entity_mut(entity);
             entity_cmd
-                .insert(ExternalImpulse::new(*direction * force))
+                .insert(ExternalImpulse::new(direction * force))
                 .remove::<Collected>();
+        })
+    }
+
+    pub fn collect_items(
+        mut commands: Commands,
+        collectors: Query<(Entity, &CollidingEntities), With<Self>>,
+        items: Query<Entity, (With<GarbageItem>, Without<Collected>)>,
+    ) {
+        for (collector_entity, collision) in &collectors {
+            for item in items.iter_many(&collision.0) {
+                commands.entity(item).insert(Collected { collector_entity });
+            }
         }
     }
 }
@@ -129,16 +157,12 @@ pub struct CollectorBundle {
 }
 
 impl CollectorBundle {
-    pub fn new(base_radius: f32, base_strength: usize) -> Self {
+    pub fn new(min_radius: f32, max_distance: f32) -> Self {
         Self {
             transform: TransformBundle::default(),
             collider: Collider::sphere(1.0),
             sensor: Sensor,
-            collectible_sensor: Collector {
-                base_strength,
-                base_radius,
-                collected: EntityHashSet::default(),
-            },
+            collectible_sensor: Collector::new(min_radius, max_distance),
             layer: CollisionLayers::new(ObjectLayer::Collector, [ObjectLayer::Collectible]),
         }
     }
