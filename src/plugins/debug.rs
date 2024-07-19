@@ -18,9 +18,15 @@ use bevy_mod_picking::prelude::*;
 use egui_dock::{DockArea, DockState, NodeIndex, Style};
 use std::any::TypeId;
 use std::{fs::File, io::Write};
+use strum::IntoEnumIterator;
 use transform_gizmo_bevy::prelude::*;
 
 use crate::GameCamera;
+
+use super::{
+    garbage::{GarbageAssets, GarbageBundle, GarbageItem},
+    map::{MapAssets, MapElementBundle},
+};
 
 pub struct DebugPlugin;
 
@@ -61,24 +67,31 @@ fn auto_add_raycast_target(
 }
 
 fn handle_pick_events(
+    mut commands: Commands,
     mut ui_state: ResMut<UiState>,
     mut egui: EguiContexts,
     egui_entity: Query<&EguiPointer>,
     mut pointer_evr: EventReader<Pointer<Click>>,
+    mut previous_entity: Local<Option<Entity>>,
 ) {
     let egui_context = egui.ctx_mut();
 
     for click in pointer_evr.read() {
-        if egui_entity.get(click.target()).is_ok() {
+        let entity = click.target();
+        if egui_entity.get(entity).is_ok() {
             continue;
         };
 
         let modifiers = egui_context.input(|i| i.clone()).modifiers;
         let add = modifiers.ctrl || modifiers.shift;
 
-        ui_state
-            .selected_entities
-            .select_maybe_add(click.target(), add);
+        if let Some(prev) = *previous_entity {
+            commands.entity(prev).remove::<GizmoTarget>();
+        }
+        commands.entity(entity).insert(GizmoTarget::default());
+        *previous_entity = Some(entity);
+
+        ui_state.selected_entities.select_maybe_add(entity, add);
     }
 }
 
@@ -122,7 +135,6 @@ fn set_camera_viewport(
         return;
     }
 
-    println!("{viewport_pos:?}, {viewport_size:?}");
     cam.viewport = Some(Viewport {
         physical_position: UVec2::new(viewport_pos.x as u32, viewport_pos.y as u32),
         physical_size: UVec2::new(viewport_size.x as u32, viewport_size.y as u32),
@@ -163,7 +175,8 @@ impl UiState {
         let tree = state.main_surface_mut();
         let [game, _inspector] =
             tree.split_right(NodeIndex::root(), 0.75, vec![EguiWindow::Inspector]);
-        let [game, _hierarchy] = tree.split_left(game, 0.2, vec![EguiWindow::Hierarchy]);
+        let [game, _hierarchy] =
+            tree.split_left(game, 0.2, vec![EguiWindow::Hierarchy, EguiWindow::Commands]);
         let [_game, _bottom] =
             tree.split_below(game, 0.8, vec![EguiWindow::Resources, EguiWindow::Assets]);
 
@@ -184,6 +197,7 @@ impl UiState {
         };
         DockArea::new(&mut self.state)
             .style(Style::from_egui(ctx.style().as_ref()))
+            .show_close_buttons(false)
             .show(ctx, &mut tab_viewer);
     }
 }
@@ -192,6 +206,7 @@ impl UiState {
 enum EguiWindow {
     GameView,
     Hierarchy,
+    Commands,
     Resources,
     Assets,
     Inspector,
@@ -212,13 +227,16 @@ impl egui_dock::TabViewer for TabViewer<'_> {
         let type_registry = type_registry.read();
 
         match window {
-            EguiWindow::GameView => {}
+            EguiWindow::GameView => {
+                *self.viewport_rect = ui.clip_rect();
+            }
             EguiWindow::Hierarchy => {
                 let selected = hierarchy_ui(self.world, ui, self.selected_entities);
                 if selected {
                     *self.selection = InspectorSelection::Entities;
                 }
             }
+            EguiWindow::Commands => commands_ui(ui, self.world),
             EguiWindow::Resources => select_resource(ui, &type_registry, self.selection),
             EguiWindow::Assets => select_asset(ui, &type_registry, self.world, self.selection),
             EguiWindow::Inspector => match *self.selection {
@@ -257,6 +275,23 @@ impl egui_dock::TabViewer for TabViewer<'_> {
     fn clear_background(&self, window: &Self::Tab) -> bool {
         !matches!(window, EguiWindow::GameView)
     }
+}
+
+fn commands_ui(ui: &mut egui::Ui, world: &mut World) {
+    if ui.button("Spawn Map Cube").clicked() {
+        let assets = world.resource::<MapAssets>();
+        world.spawn(MapElementBundle::new_cube(assets));
+    }
+    egui::ComboBox::from_label("Spawn Garbage Item")
+        .selected_text("Spawn Garbage")
+        .show_ui(ui, |ui| {
+            for item in GarbageItem::iter() {
+                if ui.button(format!("{item:?}")).clicked() {
+                    let assets = world.resource::<GarbageAssets>();
+                    world.spawn(GarbageBundle::new(item, assets));
+                }
+            }
+        });
 }
 
 fn select_resource(

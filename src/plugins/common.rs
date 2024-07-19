@@ -8,6 +8,7 @@ impl Plugin for CommonPlugin {
     }
 }
 #[derive(Debug, Component, Reflect)]
+#[reflect(Component)]
 pub struct Health {
     pub current: u16,
     pub max: u16,

@@ -20,12 +20,15 @@ impl Plugin for PlayerMovementPlugin {
 }
 
 #[derive(Debug, Clone, Copy, Component, Reflect, Deref, DerefMut)]
+#[reflect(Component)]
 pub struct MovementSpeed(pub f32);
 
 #[derive(Debug, Clone, Copy, Component, Reflect, Deref, DerefMut)]
+#[reflect(Component)]
 pub struct ControllerGravity(pub f32);
 
 #[derive(Debug, Clone, Copy, Component, Reflect, Deref, DerefMut)]
+#[reflect(Component)]
 pub struct MovementDampingFactor(pub f32);
 
 #[derive(Bundle)]

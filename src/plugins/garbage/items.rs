@@ -3,11 +3,12 @@ use crate::ObjectLayer;
 use avian3d::prelude::*;
 use bevy::color::palettes::css::*;
 use bevy::prelude::*;
-use strum::{EnumIter, IntoEnumIterator};
+use strum::{Display, EnumIter, IntoEnumIterator};
 
-#[derive(Debug, Copy, Clone, Component, EnumIter, Reflect)]
+#[derive(Debug, Copy, Clone, Component, EnumIter, Reflect, Display)]
 #[non_exhaustive]
 #[repr(u8)]
+#[reflect(Component)]
 pub enum GarbageItem {
     WoodenCrate,
     Barrel,
@@ -79,6 +80,7 @@ pub struct GarbageBundle {
     pub collider: Collider,
     pub margin: CollisionMargin,
     pub layer: CollisionLayers,
+    pub name: Name,
 }
 
 impl GarbageBundle {
@@ -95,13 +97,16 @@ impl GarbageBundle {
             collider: assets.colliders[collectible as usize].clone(),
             margin: CollisionMargin(0.05),
             layer: CollisionLayers::new(ObjectLayer::Collectible, LayerMask::ALL),
+            name: Name::new(format!("{collectible}")),
         }
     }
 }
 
-#[derive(Resource)]
+#[derive(Resource, Reflect)]
+#[reflect(Resource)]
 pub struct GarbageAssets {
     pub meshes: Vec<Handle<Mesh>>,
+    #[reflect(ignore)]
     pub colliders: Vec<Collider>,
     pub materials: Vec<Handle<StandardMaterial>>,
 }

@@ -1,14 +1,16 @@
 use super::player::Player;
 use bevy::{
     core_pipeline::{bloom::BloomSettings, tonemapping::Tonemapping},
+    ecs::system::SystemParam,
     pbr::ScreenSpaceAmbientOcclusionBundle,
     prelude::*,
     render::camera::ScalingMode,
+    window::PrimaryWindow,
 };
 
 const CAM_SCALE_COEF: f32 = 1.0;
 const CAM_SCALE_MARGIN: f32 = 1.0;
-const CAM_MIN_SCALE: f32 = 20.0;
+const CAM_MIN_SCALE: f32 = 0.05;
 const CAM_Y_OFFSET: f32 = 20.0;
 /// How quickly should the camera snap to the desired location.
 const CAMERA_DECAY_RATE: f32 = 2.;
@@ -20,11 +22,30 @@ impl Plugin for CameraPlugin {
         app.register_type::<GameCamera>()
             .add_systems(Startup, spawn_camera)
             .add_systems(PostUpdate, follow_players);
+
+        #[cfg(feature = "debug")]
+        app.add_systems(PostUpdate, draw_gizmos);
     }
 }
 
 #[derive(Component, Reflect)]
 pub struct GameCamera;
+
+#[derive(SystemParam)]
+pub struct CameraParams<'w, 's> {
+    pub camera: Query<'w, 's, (&'static GlobalTransform, &'static Camera)>,
+    pub window: Query<'w, 's, &'static Window, With<PrimaryWindow>>,
+}
+
+impl<'w, 's> CameraParams<'w, 's> {
+    pub fn mouse_ray(&self) -> Option<Ray3d> {
+        let (cam_gtr, camera) = self.camera.single();
+        self.window
+            .single()
+            .cursor_position()
+            .and_then(|p| camera.viewport_to_world(cam_gtr, p))
+    }
+}
 
 pub fn spawn_camera(mut commands: Commands) {
     commands.spawn((
@@ -34,16 +55,18 @@ pub fn spawn_camera(mut commands: Commands) {
             projection: Projection::Orthographic(OrthographicProjection {
                 scaling_mode: ScalingMode::WindowSize(1.0),
                 scale: CAM_MIN_SCALE,
+                near: -10.0,
                 ..default()
             }),
             tonemapping: Tonemapping::ReinhardLuminance,
             ..default()
         },
         BloomSettings::default(),
-        #[cfg(not(feature = "debug"))]
         ScreenSpaceAmbientOcclusionBundle::default(),
         Name::new("Game Camera"),
         GameCamera,
+        #[cfg(feature = "debug")]
+        transform_gizmo_bevy::GizmoCamera,
     ));
 }
 
@@ -74,4 +97,14 @@ pub fn follow_players(
         .max(CAM_MIN_SCALE)
         .mul_add(CAM_SCALE_COEF, CAM_SCALE_MARGIN);
     projection.scale = projection.scale.lerp(target, dt * CAMERA_DECAY_RATE);
+}
+
+#[cfg(feature = "debug")]
+fn draw_gizmos(mut gizmos: Gizmos, camera: CameraParams) {
+    use bevy::color::palettes::css::GREEN;
+
+    let Some(ray) = camera.mouse_ray() else {
+        return;
+    };
+    gizmos.ray(ray.origin, *ray.direction, Color::Srgba(GREEN))
 }

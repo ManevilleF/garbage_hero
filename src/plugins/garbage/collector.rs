@@ -10,6 +10,7 @@ use crate::ObjectLayer;
 use super::{ArcDistribution, CircularDistribution, GarbageItem};
 
 #[derive(Debug, Reflect)]
+#[reflect(Component)]
 pub struct Collected {
     pub collector_entity: Entity,
 }
@@ -53,6 +54,7 @@ impl Component for Collected {
 }
 
 #[derive(Debug, Component, Reflect)]
+#[reflect(Component)]
 pub struct Collector {
     pub circle_distrib: CircularDistribution,
     pub arc_distrib: ArcDistribution,

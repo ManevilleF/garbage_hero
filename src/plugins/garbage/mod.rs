@@ -5,16 +5,17 @@ mod distribution;
 mod items;
 
 pub use collector::CollectorBundle;
+pub use items::{GarbageAssets, GarbageBundle, GarbageItem};
 
 use collector::*;
 use distribution::*;
-use items::*;
 
 pub struct GarbagePlugin;
 
 impl Plugin for GarbagePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<GarbageAssets>()
+            .register_type::<GarbageAssets>()
             .register_type::<GarbageItem>()
             .register_type::<Collected>()
             .register_type::<Collector>()

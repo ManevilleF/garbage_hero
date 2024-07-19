@@ -5,6 +5,7 @@ edition = "2021"
 
 [features]
 default = []
+debug_physics = ["avian3d/debug-plugin"]
 debug = [
     "bevy-inspector-egui",
     "leafwing-input-manager/egui",

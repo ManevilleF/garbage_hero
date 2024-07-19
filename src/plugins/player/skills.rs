@@ -1,8 +1,8 @@
-use bevy::{log, prelude::*, window::PrimaryWindow};
+use bevy::{log, prelude::*};
 use leafwing_input_manager::action_state::ActionState;
 use strum::EnumIter;
 
-use crate::GameCamera;
+use crate::plugins::camera::CameraParams;
 
 use super::{input::PlayerInputAction, GameController, Player};
 
@@ -24,6 +24,7 @@ pub enum PlayerSkill {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Component, Deref, DerefMut, Reflect)]
+#[reflect(Component)]
 pub struct PlayerAim(Dir2);
 
 #[derive(Bundle)]
@@ -46,18 +47,12 @@ fn update_aim(
         &GlobalTransform,
         &ActionState<PlayerInputAction>,
     )>,
-    windows: Query<&Window, With<PrimaryWindow>>,
-    cameras: Query<(&Camera, &GlobalTransform), With<GameCamera>>,
+    camera: CameraParams,
 ) {
-    let (camera, cam_gtr) = cameras.single();
-    let cursor_ray = windows
-        .single()
-        .cursor_position()
-        .and_then(|p| camera.viewport_to_world(cam_gtr, p));
     for (mut aim, player, gtr, action_state) in &mut players {
         match player.controller {
             GameController::KeyBoard => {
-                let Some(ray) = cursor_ray else {
+                let Some(ray) = camera.mouse_ray() else {
                     continue;
                 };
                 let player_pos = gtr.translation();

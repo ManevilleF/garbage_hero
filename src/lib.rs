@@ -52,9 +52,8 @@ pub fn run() -> AppExit {
         MapPlugin,
     ));
     #[cfg(feature = "debug")]
-    app.add_plugins((
-        DebugPlugin,
-        avian3d::debug_render::PhysicsDebugPlugin::default(),
-    ));
+    app.add_plugins(DebugPlugin);
+    #[cfg(feature = "debug_physics")]
+    app.add_plugins(avian3d::debug_render::PhysicsDebugPlugin::default());
     app.run()
 }
