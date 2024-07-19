@@ -1,10 +1,12 @@
-use super::common::Health;
+use super::{common::Health, garbage::CollectorBundle};
 use bevy::prelude::*;
 
+mod assets;
 mod input;
 mod movement;
 mod skills;
 
+use assets::PlayerAssets;
 pub use input::GameController;
 use input::{PlayerInputBundle, PlayerInputPlugin};
 use movement::{PlayerMovementBundle, PlayerMovementPlugin};
@@ -22,14 +24,33 @@ impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((PlayerInputPlugin, PlayerMovementPlugin, PlayerSkillsPlugin))
             .init_resource::<PlayerAssets>()
-            .register_type::<Player>();
+            .add_event::<PlayerConnected>()
+            .register_type::<Player>()
+            .register_type::<PlayerConnected>();
     }
 }
+
+#[derive(Debug, Event, Reflect)]
+pub struct PlayerConnected(pub Player);
 
 #[derive(Debug, Component, Reflect)]
 pub struct Player {
     pub id: u8,
     pub controller: GameController,
+}
+
+impl Player {
+    pub fn spawn_player(self, position: Vec3) -> impl FnOnce(&mut World) {
+        move |world| {
+            let assets = world.resource::<PlayerAssets>();
+            let mut bundle = PlayerBundle::new(self, assets);
+            bundle.pbr.transform.translation = position;
+            world.spawn(bundle).with_children(|b| {
+                let collector_bundle = CollectorBundle::new(5.0, 1.0);
+                b.spawn(collector_bundle);
+            });
+        }
+    }
 }
 
 #[derive(Bundle)]
@@ -44,78 +65,22 @@ pub struct PlayerBundle {
 }
 
 impl PlayerBundle {
-    pub fn new(player: u8, controller: GameController, assets: &PlayerAssets) -> Self {
-        if player >= MAX_PLAYERS {
+    pub fn new(player: Player, assets: &PlayerAssets) -> Self {
+        if player.id >= MAX_PLAYERS {
             panic!("{MAX_PLAYERS} players supported");
         }
         Self {
-            player: Player {
-                id: player,
-                controller,
-            },
-            name: Name::new(format!("Player {}: {controller}", player + 1,)),
+            name: Name::new(format!("Player {}: {}", player.id, player.controller)),
             health: Health::new(BASE_PLAYER_HEALTH),
-            input: PlayerInputBundle::new(controller),
+            input: PlayerInputBundle::new(player.controller),
             movement: PlayerMovementBundle::new(30.0, 0.9),
             skills: PlayerSkillsBundle::new(),
             pbr: PbrBundle {
                 mesh: assets.mesh.clone_weak(),
-                material: assets.materials[player as usize].clone_weak(),
+                material: assets.materials[player.id as usize].clone_weak(),
                 ..default()
             },
-        }
-    }
-}
-
-#[derive(Resource)]
-pub struct PlayerAssets {
-    pub colors: [Color; MAX_PLAYERS as usize],
-    pub mesh: Handle<Mesh>,
-    pub materials: [Handle<StandardMaterial>; MAX_PLAYERS as usize],
-}
-
-impl FromWorld for PlayerAssets {
-    fn from_world(world: &mut World) -> Self {
-        let colors = [
-            Color::srgb_u8(255, 0, 0),     // #FF0000 - Red
-            Color::srgb_u8(255, 255, 0),   // #FFFF00 - Yellow
-            Color::srgb_u8(0, 234, 255),   // #00EAFF - Cyan
-            Color::srgb_u8(170, 0, 255),   // #AA00FF - Purple
-            Color::srgb_u8(255, 127, 0),   // #FF7F00 - Orange
-            Color::srgb_u8(191, 255, 0),   // #BFFF00 - Lime
-            Color::srgb_u8(0, 149, 255),   // #0095FF - Sky Blue
-            Color::srgb_u8(255, 0, 170),   // #FF00AA - Magenta
-            Color::srgb_u8(255, 212, 0),   // #FFD400 - Gold
-            Color::srgb_u8(106, 255, 0),   // #6AFF00 - Green
-            Color::srgb_u8(0, 64, 255),    // #0040FF - Blue
-            Color::srgb_u8(237, 185, 185), // #EDB9B9 - Light Pink
-            Color::srgb_u8(185, 215, 237), // #B9D7ED - Light Blue
-            Color::srgb_u8(231, 233, 185), // #E7E9B9 - Light Yellow
-            Color::srgb_u8(220, 185, 237), // #DCB9ED - Light Purple
-            Color::srgb_u8(185, 237, 224), // #B9EDE0 - Light Cyan
-            Color::srgb_u8(143, 35, 35),   // #8F2323 - Dark Red
-            Color::srgb_u8(35, 98, 143),   // #23628F - Dark Blue
-            Color::srgb_u8(143, 106, 35),  // #8F6A23 - Dark Yellow
-            Color::srgb_u8(107, 35, 143),  // #6B238F - Dark Purple
-            Color::srgb_u8(79, 143, 35),   // #4F8F23 - Dark Green
-            Color::srgb_u8(0, 0, 0),       // #000000 - Black
-            Color::srgb_u8(115, 115, 115), // #737373 - Gray
-            Color::srgb_u8(204, 204, 204), // #CCCCCC - Light Gray
-        ];
-        let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
-        let materials = colors.map(|color| {
-            materials.add(StandardMaterial {
-                base_color: color,
-                fog_enabled: false,
-                ..default()
-            })
-        });
-        let mut meshes = world.resource_mut::<Assets<Mesh>>();
-        let mesh = meshes.add(Capsule3d::new(PLAYER_RADIUS, PLAYER_HEIGHT));
-        Self {
-            colors,
-            materials,
-            mesh,
+            player,
         }
     }
 }

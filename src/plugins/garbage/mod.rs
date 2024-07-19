@@ -4,6 +4,8 @@ mod collector;
 mod distribution;
 mod items;
 
+pub use collector::CollectorBundle;
+
 use collector::*;
 use distribution::*;
 use items::*;

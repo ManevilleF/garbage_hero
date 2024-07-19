@@ -10,6 +10,8 @@ const CAM_SCALE_COEF: f32 = 1.0;
 const CAM_SCALE_MARGIN: f32 = 1.0;
 const CAM_MIN_SCALE: f32 = 20.0;
 const CAM_Y_OFFSET: f32 = 20.0;
+/// How quickly should the camera snap to the desired location.
+const CAMERA_DECAY_RATE: f32 = 2.;
 
 pub struct CameraPlugin;
 
@@ -45,6 +47,7 @@ pub fn spawn_camera(mut commands: Commands) {
 }
 
 pub fn follow_players(
+    time: Res<Time>,
     players: Query<&GlobalTransform, With<Player>>,
     mut cameras: Query<(&mut Transform, &mut OrthographicProjection), With<GameCamera>>,
 ) {
@@ -58,12 +61,16 @@ pub fn follow_players(
         min = min.min(pos);
         max = max.max(pos);
     }
+    let dt = time.delta_seconds();
+    // Translation
     let center = (max + min) / 2.0;
+    let target = Vec3::new(center.x, cam_tr.translation.y, center.y);
+    cam_tr.translation = cam_tr.translation.lerp(target, dt * CAMERA_DECAY_RATE);
+    // Projection
     let size = max - min;
-    cam_tr.translation.x = center.x;
-    cam_tr.translation.z = center.y;
-    projection.scale = size
+    let target = size
         .max_element()
         .max(CAM_MIN_SCALE)
         .mul_add(CAM_SCALE_COEF, CAM_SCALE_MARGIN);
+    projection.scale = projection.scale.lerp(target, dt * CAMERA_DECAY_RATE);
 }

@@ -1,5 +1,13 @@
-use super::skills::PlayerSkill;
-use bevy::prelude::*;
+use super::{skills::PlayerSkill, Player, PlayerConnected};
+use bevy::{
+    input::{
+        gamepad::{GamepadConnection, GamepadConnectionEvent},
+        keyboard::KeyboardInput,
+    },
+    log,
+    prelude::*,
+    utils::HashMap,
+};
 use leafwing_input_manager::prelude::*;
 use std::fmt::Display;
 
@@ -8,11 +16,12 @@ pub struct PlayerInputPlugin;
 impl Plugin for PlayerInputPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<PlayerInputAction>()
-            .add_plugins(InputManagerPlugin::<PlayerInputAction>::default());
+            .add_plugins(InputManagerPlugin::<PlayerInputAction>::default())
+            .add_systems(Update, handle_game_input);
     }
 }
 
-#[derive(Debug, Clone, Copy, Reflect)]
+#[derive(Debug, Clone, Copy, Reflect, PartialEq, Eq, Hash)]
 pub enum GameController {
     KeyBoard,
     Gamepad(Gamepad),
@@ -87,4 +96,43 @@ impl PlayerInputAction {
         }
         None
     }
+}
+
+pub fn handle_game_input(
+    mut gamepad_evr: EventReader<GamepadConnectionEvent>,
+    mut keyboard_evr: EventReader<KeyboardInput>,
+    players: Query<&Player>,
+    mut player_connected_evw: EventWriter<PlayerConnected>,
+) {
+    let players: HashMap<GameController, u8> =
+        players.iter().map(|p| (p.controller, p.id)).collect();
+    let new_player_id = || players.values().max().copied().unwrap_or(0) + 1;
+    for event in gamepad_evr.read() {
+        let controller = GameController::Gamepad(event.gamepad);
+        match &event.connection {
+            GamepadConnection::Connected(info) => {
+                log::info!("New controller detected: {controller}: {info:?}");
+                if !players.contains_key(&controller) {
+                    player_connected_evw.send(PlayerConnected(Player {
+                        controller,
+                        id: new_player_id(),
+                    }));
+                }
+            }
+            GamepadConnection::Disconnected => {
+                if let Some(player) = players.get(&controller) {
+                    log::info!("Player {player} disconnected");
+                    // TODO: Handle disconnected player
+                }
+            }
+        }
+    }
+    if players.get(&GameController::KeyBoard).is_none() && !keyboard_evr.is_empty() {
+        log::info!("Keyboard controller detected");
+        player_connected_evw.send(PlayerConnected(Player {
+            controller: GameController::KeyBoard,
+            id: new_player_id(),
+        }));
+    }
+    keyboard_evr.clear();
 }
