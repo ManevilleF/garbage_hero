@@ -1,7 +1,7 @@
 use super::{MAX_PLAYERS, PLAYER_HEIGHT, PLAYER_RADIUS};
 use bevy::prelude::*;
 
-#[derive(Resource)]
+#[derive(Resource, Reflect)]
 pub struct PlayerAssets {
     pub colors: [Color; MAX_PLAYERS as usize],
     pub mesh: Handle<Mesh>,

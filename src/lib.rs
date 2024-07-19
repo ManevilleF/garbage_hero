@@ -1,6 +1,6 @@
 #![warn(clippy::all, clippy::nursery)]
 #![allow(dead_code, clippy::type_complexity)]
-use avian3d::prelude::PhysicsLayer;
+use avian3d::{prelude::PhysicsLayer, PhysicsPlugins};
 use bevy::{core_pipeline::experimental::taa::TemporalAntiAliasPlugin, prelude::*};
 
 mod plugins;
@@ -35,11 +35,13 @@ pub fn run() -> AppExit {
     app.add_plugins(DefaultPlugins.set(WindowPlugin {
         primary_window: Some(Window {
             resolution: (1920.0, 1080.0).into(),
+            name: Some(APP_NAME.to_string()),
             ..default()
         }),
         ..default()
     }))
     .init_state::<GameState>()
+    .add_plugins(PhysicsPlugins::default())
     .add_plugins(TemporalAntiAliasPlugin)
     .add_plugins((
         LightPlugin,
@@ -47,10 +49,11 @@ pub fn run() -> AppExit {
         PlayerPlugin,
         CommonPlugin,
         CameraPlugin,
+        MapPlugin,
     ));
     #[cfg(feature = "debug")]
     app.add_plugins((
-        bevy_inspector_egui::quick::WorldInspectorPlugin::default(),
+        DebugPlugin,
         avian3d::debug_render::PhysicsDebugPlugin::default(),
     ));
     app.run()

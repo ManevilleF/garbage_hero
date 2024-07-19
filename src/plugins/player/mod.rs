@@ -24,6 +24,7 @@ impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((PlayerInputPlugin, PlayerMovementPlugin, PlayerSkillsPlugin))
             .init_resource::<PlayerAssets>()
+            .register_type::<PlayerAssets>()
             .add_event::<PlayerConnected>()
             .register_type::<Player>()
             .register_type::<PlayerConnected>();

@@ -5,7 +5,15 @@ edition = "2021"
 
 [features]
 default = []
-debug = ["bevy-inspector-egui", "leafwing-input-manager/egui"]
+debug = [
+    "bevy-inspector-egui",
+    "leafwing-input-manager/egui",
+    "bevy_egui",
+    "egui_dock",
+    "transform-gizmo-bevy",
+    "bevy_mod_picking",
+    "bevy_framepace",
+]
 
 [dependencies]
 # Physics
@@ -18,8 +26,38 @@ leafwing-input-manager = "0.14"
 [dependencies.bevy]
 version = "0.14"
 
+# EDITOR DEPS
 [dependencies.bevy-inspector-egui]
 version = "0.25"
+features = ["highlight_changes"]
+optional = true
+
+[dependencies.bevy_egui]
+version = "0.28"
+optional = true
+
+[dependencies.egui_dock]
+version = "0.13"
+optional = true
+
+[dependencies.transform-gizmo-bevy]
+version = "0.3"
+optional = true
+
+[dependencies.bevy_mod_picking]
+version = "0.20"
+default-features = false
+features = [
+    "backend_raycast",
+    "backend_egui",
+    "backend_sprite",
+    "backend_avian",
+    "highlight",
+]
+optional = true
+
+[dependencies.bevy_framepace]
+version = "0.17"
 optional = true
 
 # Enable max optimizations for dependencies, but not for our code:
@@ -32,4 +70,5 @@ opt-level = 1
 
 [profile.release]
 codegen-units = 1
+lto = true
 panic = "abort"

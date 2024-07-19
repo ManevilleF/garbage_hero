@@ -40,6 +40,7 @@ pub fn spawn_camera(mut commands: Commands) {
             ..default()
         },
         BloomSettings::default(),
+        #[cfg(not(feature = "debug"))]
         ScreenSpaceAmbientOcclusionBundle::default(),
         Name::new("Game Camera"),
         GameCamera,
