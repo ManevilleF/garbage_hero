@@ -27,27 +27,28 @@ impl Plugin for PlayerPlugin {
             .register_type::<PlayerAssets>()
             .add_event::<PlayerConnected>()
             .register_type::<Player>()
-            .register_type::<PlayerConnected>();
+            .register_type::<PlayerConnected>()
+            .add_systems(Update, spawn_players);
     }
 }
 
 #[derive(Debug, Event, Reflect)]
 pub struct PlayerConnected(pub Player);
 
-#[derive(Debug, Component, Reflect)]
+#[derive(Debug, Component, Clone, Copy, Reflect)]
 pub struct Player {
     pub id: u8,
     pub controller: GameController,
 }
 
 impl Player {
-    pub fn spawn_player(self, position: Vec3) -> impl FnOnce(&mut World) {
+    pub fn spawn(self, position: Vec3) -> impl FnOnce(&mut World) {
         move |world| {
             let assets = world.resource::<PlayerAssets>();
             let mut bundle = PlayerBundle::new(self, assets);
             bundle.pbr.transform.translation = position;
             world.spawn(bundle).with_children(|b| {
-                let collector_bundle = CollectorBundle::new(5.0, 1.0);
+                let collector_bundle = CollectorBundle::new(3.0, 1.5);
                 b.spawn(collector_bundle);
             });
         }
@@ -83,5 +84,11 @@ impl PlayerBundle {
             },
             player,
         }
+    }
+}
+
+pub fn spawn_players(mut connected_evr: EventReader<PlayerConnected>, mut commands: Commands) {
+    for event in connected_evr.read() {
+        commands.add(event.0.spawn(Vec3::Y * 3.0));
     }
 }

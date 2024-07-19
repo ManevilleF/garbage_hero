@@ -24,7 +24,7 @@ use transform_gizmo_bevy::prelude::*;
 use crate::GameCamera;
 
 use super::{
-    garbage::{GarbageAssets, GarbageBundle, GarbageItem},
+    garbage::{spawn_some_garbage, GarbageAssets, GarbageBundle, GarbageItem},
     map::{MapAssets, MapElementBundle},
 };
 
@@ -292,6 +292,10 @@ fn commands_ui(ui: &mut egui::Ui, world: &mut World) {
                 }
             }
         });
+    if ui.button("Spawn 50 garbage items").clicked() {
+        let shape = Cuboid::new(50.0, 5.0, 50.0);
+        spawn_some_garbage(50, Vec3::Y * 5.0, shape)(world);
+    }
 }
 
 fn select_resource(

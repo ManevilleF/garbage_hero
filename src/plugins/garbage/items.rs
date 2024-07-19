@@ -1,3 +1,5 @@
+use std::f32::consts::{FRAC_PI_2, PI};
+
 use crate::plugins::common::Health;
 use crate::ObjectLayer;
 use avian3d::prelude::*;
@@ -64,9 +66,27 @@ impl GarbageItem {
             Self::MediumRock => Sphere::new(0.6).mesh().ico(12).unwrap(),
             Self::BigRock => Sphere::new(1.0).mesh().ico(15).unwrap(),
             Self::Gear => Extrusion::new(Annulus::new(0.8, 1.0), 0.5).into(),
-            Self::Pipe => Cylinder::new(0.1, 1.0).into(),
-            Self::Bottle => Capsule3d::new(0.1, 0.4).into(),
+            Self::Pipe => Cylinder::new(0.2, 1.0).into(),
+            Self::Bottle => Capsule3d::new(0.15, 0.4).into(),
             Self::PoisonVial | Self::FirePot => Sphere::new(0.1).into(),
+        }
+    }
+
+    pub fn collider(self) -> Collider {
+        match self {
+            Self::WoodenCrate => Collider::cuboid(1.0, 1.0, 1.0),
+            Self::Barrel | Self::ExplosiveBarrel => Collider::cylinder(0.5, 1.0),
+            Self::SmallRock => Collider::sphere(0.2),
+            Self::MediumRock => Collider::sphere(0.6),
+            Self::BigRock => Collider::sphere(1.0),
+            Self::Gear => Collider::compound(vec![(
+                Vec3::ZERO,
+                Quat::from_rotation_x(FRAC_PI_2),
+                Collider::cylinder(1.0, 0.5),
+            )]),
+            Self::Pipe => Collider::cylinder(0.1, 1.0),
+            Self::Bottle => Collider::capsule(0.1, 0.4),
+            Self::PoisonVial | Self::FirePot => Collider::sphere(0.1),
         }
     }
 }
@@ -80,6 +100,8 @@ pub struct GarbageBundle {
     pub collider: Collider,
     pub margin: CollisionMargin,
     pub layer: CollisionLayers,
+    pub ang_damping: AngularDamping,
+    pub gravity_scale: GravityScale,
     pub name: Name,
 }
 
@@ -96,7 +118,9 @@ impl GarbageBundle {
             rigidbody: RigidBody::Dynamic,
             collider: assets.colliders[collectible as usize].clone(),
             margin: CollisionMargin(0.05),
+            ang_damping: AngularDamping(1.0),
             layer: CollisionLayers::new(ObjectLayer::Collectible, LayerMask::ALL),
+            gravity_scale: GravityScale(1.0),
             name: Name::new(format!("{collectible}")),
         }
     }
@@ -128,9 +152,7 @@ impl FromWorld for GarbageAssets {
             .collect();
         let mut meshes = world.resource_mut::<Assets<Mesh>>();
         let meshes = GarbageItem::iter().map(|c| meshes.add(c.mesh())).collect();
-        let colliders = GarbageItem::iter()
-            .map(|c| Collider::trimesh_from_mesh(&c.mesh()).unwrap())
-            .collect();
+        let colliders = GarbageItem::iter().map(GarbageItem::collider).collect();
         Self {
             meshes,
             materials,

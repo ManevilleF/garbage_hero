@@ -11,7 +11,6 @@ impl Plugin for PlayerMovementPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<MovementSpeed>()
             .register_type::<MovementDampingFactor>()
-            .register_type::<ControllerGravity>()
             .add_systems(
                 Update,
                 (apply_gravity, apply_movement, apply_movement_damping).chain(),
@@ -25,33 +24,33 @@ pub struct MovementSpeed(pub f32);
 
 #[derive(Debug, Clone, Copy, Component, Reflect, Deref, DerefMut)]
 #[reflect(Component)]
-pub struct ControllerGravity(pub f32);
-
-#[derive(Debug, Clone, Copy, Component, Reflect, Deref, DerefMut)]
-#[reflect(Component)]
 pub struct MovementDampingFactor(pub f32);
 
 #[derive(Bundle)]
 pub struct PlayerMovementBundle {
     pub speed: MovementSpeed,
-    pub gravity: ControllerGravity,
     pub damping: MovementDampingFactor,
     pub rigidbody: RigidBody,
     pub collider: Collider,
     pub layer: CollisionLayers,
+    pub margin: CollisionMargin,
     pub constraints: LockedAxes,
+    pub angular_damping: AngularDamping,
+    pub gravity_scale: GravityScale,
 }
 
 impl PlayerMovementBundle {
     pub fn new(speed: f32, damping_factor: f32) -> Self {
         Self {
             speed: MovementSpeed(speed),
-            gravity: ControllerGravity(-9.81),
             damping: MovementDampingFactor(damping_factor),
-            rigidbody: RigidBody::Kinematic,
+            rigidbody: RigidBody::Dynamic,
             collider: Collider::capsule(PLAYER_RADIUS, PLAYER_HEIGHT),
             layer: CollisionLayers::new(ObjectLayer::Player, LayerMask::ALL),
+            margin: CollisionMargin(0.05),
             constraints: LockedAxes::new().lock_rotation_x().lock_rotation_z(),
+            angular_damping: AngularDamping(10.0),
+            gravity_scale: GravityScale(1.0),
         }
     }
 }
@@ -74,13 +73,14 @@ pub fn apply_movement(
     }
 }
 
-/// Applies [`ControllerGravity`] to player controllers.
+/// Applies [`Gravity`] to player controllers.
 fn apply_gravity(
     time: Res<Time>,
-    mut controllers: Query<(&ControllerGravity, &mut LinearVelocity)>,
+    gravity: Res<Gravity>,
+    mut controllers: Query<&mut LinearVelocity, With<MovementSpeed>>,
 ) {
     let delta_time = time.delta_seconds();
-    for (gravity, mut velocity) in &mut controllers {
+    for mut velocity in &mut controllers {
         velocity.0 += gravity.0 * delta_time;
     }
 }

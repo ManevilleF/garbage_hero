@@ -44,7 +44,7 @@ impl MapElementBundle {
 
 fn create_default_ground(mut commands: Commands, assets: Res<MapAssets>) {
     let mut bundle = MapElementBundle::new_cube(&assets);
-    bundle.pbr.transform.translation.y = -0.5;
+    bundle.pbr.transform.translation.y = -3.0;
     bundle.pbr.transform.scale = Vec3::new(100.0, 1.0, 100.0);
     bundle.name = Name::new("Ground");
     commands.spawn(bundle);

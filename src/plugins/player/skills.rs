@@ -10,7 +10,8 @@ pub struct PlayerSkillsPlugin;
 
 impl Plugin for PlayerSkillsPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<PlayerAim>();
+        app.register_type::<PlayerAim>()
+            .add_systems(Update, update_aim);
     }
 }
 
@@ -56,7 +57,7 @@ fn update_aim(
                     continue;
                 };
                 let player_pos = gtr.translation();
-                let Some(dist) = ray.intersect_plane(player_pos, InfinitePlane3d::new(Dir3::Y))
+                let Some(dist) = ray.intersect_plane(Vec3::ZERO, InfinitePlane3d::new(Dir3::Y))
                 else {
                     log::error!(
                         "Failed to compute camera ray intersection for player {}",

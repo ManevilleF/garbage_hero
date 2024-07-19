@@ -41,8 +41,9 @@ impl<'w, 's> CameraParams<'w, 's> {
     pub fn mouse_ray(&self) -> Option<Ray3d> {
         let (cam_gtr, camera) = self.camera.single();
         self.window
-            .single()
-            .cursor_position()
+            .get_single()
+            .ok()
+            .and_then(|w| w.cursor_position())
             .and_then(|p| camera.viewport_to_world(cam_gtr, p))
     }
 }

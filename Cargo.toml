@@ -23,6 +23,8 @@ avian3d = "0.1"
 strum = { version = "0.26", features = ["derive"] }
 # Input map
 leafwing-input-manager = "0.14"
+# PRNG
+rand = "0.8"
 
 [dependencies.bevy]
 version = "0.14"

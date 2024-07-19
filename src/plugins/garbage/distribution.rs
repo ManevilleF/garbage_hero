@@ -92,7 +92,7 @@ impl CircularDistribution {
     }
 
     pub fn rotate(&mut self, angle: f32) {
-        self.current_angle += angle;
+        self.current_angle = (self.current_angle + angle) % TAU;
         self.points
             .iter_mut()
             .for_each(|point| *point = rotated_point(point, angle));
@@ -178,7 +178,7 @@ impl ArcDistribution {
         }
         let radius = self.radius(amount);
         let theta = TAU / (amount as f32);
-        let max_arc_points = amount / 4;
+        let max_arc_points = (amount / 4).max(1);
         self.points = (0..amount)
             .map(|i| {
                 let r = ((i / max_arc_points) as f32).mul_add(self.max_distance, radius);
