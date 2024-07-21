@@ -4,7 +4,7 @@ mod collector;
 mod distribution;
 mod items;
 
-pub use collector::CollectorBundle;
+pub use collector::{Collector, CollectorBundle};
 pub use items::{GarbageAssets, GarbageBundle, GarbageItem};
 
 use collector::*;
@@ -21,10 +21,11 @@ impl Plugin for GarbagePlugin {
             .register_type::<GarbageItem>()
             .register_type::<Collected>()
             .register_type::<Collector>()
-            .register_type::<CircularDistribution>();
+            .register_type::<PointDistribution>();
         app.add_systems(
             FixedUpdate,
             (
+                Collector::auto_rotate,
                 Collector::update_collected_position,
                 Collector::collect_items,
             ),

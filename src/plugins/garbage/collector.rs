@@ -7,7 +7,7 @@ use bevy::{
 
 use crate::ObjectLayer;
 
-use super::{ArcDistribution, CircularDistribution, GarbageItem};
+use super::{DistributionShape, GarbageItem, PointDistribution};
 
 #[derive(Debug, Reflect)]
 #[reflect(Component)]
@@ -80,8 +80,8 @@ impl Component for Collected {
 #[derive(Debug, Component, Reflect)]
 #[reflect(Component)]
 pub struct Collector {
-    pub circle_distrib: CircularDistribution,
-    pub arc_distrib: ArcDistribution,
+    distribution: PointDistribution,
+    shape: DistributionShape,
     collected: Vec<Entity>,
 }
 
@@ -92,14 +92,14 @@ impl Collector {
 
     pub fn new(min_radius: f32, max_distance: f32) -> Self {
         Self {
-            circle_distrib: CircularDistribution::new(min_radius, max_distance),
-            arc_distrib: ArcDistribution::new(min_radius, max_distance),
+            distribution: PointDistribution::new(min_radius, max_distance),
+            shape: DistributionShape::Circle,
             collected: Vec::with_capacity(Self::MAX_ITEMS),
         }
     }
 
     pub fn radius(&self) -> f32 {
-        self.circle_distrib.radius(self.len())
+        self.distribution.radius(self.len())
     }
 
     /// Calculate the rotation angle in radians for a constant linear speed.
@@ -115,11 +115,6 @@ impl Collector {
     fn rotation_angle(radius: f32, dt: f32) -> f32 {
         let angular_speed = Self::ANGULAR_SPEED / radius;
         angular_speed * dt
-    }
-
-    pub fn tick_circle_rotation(&mut self, dt: f32) {
-        self.circle_distrib
-            .rotate(Self::rotation_angle(self.radius(), dt));
     }
 
     pub fn update_radius(mut collectors: Query<(&mut Transform, &Self), Changed<Self>>) {
@@ -143,33 +138,30 @@ impl Collector {
             return false;
         }
         self.collected.push(entity);
-        self.circle_distrib.set_amount(self.len());
-        self.arc_distrib.set_amount(self.len());
+        self.distribution.update(self.len(), self.shape);
         true
     }
 
     pub fn remove(&mut self, entity: Entity) -> Option<Entity> {
         let index = self.collected.iter().position(|e| *e == entity)?;
         let res = self.collected.remove(index);
-        self.circle_distrib.set_amount(self.len());
-        self.arc_distrib.set_amount(self.len());
+        self.distribution.update(self.len(), self.shape);
         Some(res)
     }
 
+    pub fn set_shape(&mut self, shape: DistributionShape) {
+        self.shape = shape;
+        self.distribution.update(self.len(), self.shape);
+    }
+
     pub fn update_collected_position(
-        time: Res<Time>,
-        mut collected: Query<
-            (&Transform, &mut LinearVelocity),
-            (With<Collected>, With<GarbageItem>),
-        >,
-        mut collectors: Query<(&GlobalTransform, &mut Self)>,
+        mut collected: Query<(&Transform, &mut LinearVelocity), With<Collected>>,
+        mut collectors: Query<(&GlobalTransform, &Self)>,
     ) {
-        let dt = time.delta_seconds();
-        for (center_tr, mut collector) in &mut collectors {
+        for (center_tr, collector) in &mut collectors {
             let center = center_tr.translation();
-            collector.tick_circle_rotation(dt);
             let mut collected = collected.iter_many_mut(&collector.collected);
-            let positions = collector.circle_distrib.points();
+            let positions = collector.distribution.points();
             let mut i = 0_usize;
             while let Some((tr, mut linvel)) = collected.fetch_next() {
                 let target = positions[i];
@@ -182,8 +174,20 @@ impl Collector {
         }
     }
 
+    pub fn auto_rotate(time: Res<Time>, mut collectors: Query<&mut Self>) {
+        let dt = time.delta_seconds();
+        for mut collector in &mut collectors {
+            if collector.shape == DistributionShape::Circle {
+                let radius = collector.radius();
+                collector
+                    .distribution
+                    .rotate(Self::rotation_angle(radius, dt));
+            }
+        }
+    }
+
     pub fn throw_collected(&self, direction: Dir2, force: f32) -> Option<impl FnOnce(&mut World)> {
-        let (index, _) = self.circle_distrib.find_closest_aligned_point(direction)?;
+        let (index, _) = self.distribution.find_closest_aligned_point(direction)?;
         let Some(entity) = self.collected.get(index).copied() else {
             log::error!("Collector and circular distribution are out of sync, No entity found at index {index:?}");
             return None;
@@ -211,18 +215,20 @@ impl Collector {
     }
 
     pub fn draw_gizmos(mut gizmos: Gizmos, collectors: Query<(&GlobalTransform, &Self)>) {
-        use bevy::color::palettes::css::YELLOW;
+        use bevy::color::palettes::css::DARK_GRAY;
+        let color = Color::Srgba(DARK_GRAY);
+
         for (gt, collector) in &collectors {
             let translation = gt.translation();
             gizmos.circle(
                 translation,
                 Dir3::Y,
-                collector.circle_distrib.radius(collector.collected.len()),
-                Color::Srgba(YELLOW),
+                collector.distribution.radius(collector.collected.len()),
+                color,
             );
-            for pos in collector.circle_distrib.points() {
+            for pos in collector.distribution.points() {
                 let p = translation + Vec3::new(pos.x, 0.0, pos.y);
-                gizmos.sphere(p, Quat::IDENTITY, 0.2, Color::Srgba(YELLOW));
+                gizmos.sphere(p, Quat::IDENTITY, 0.2, color);
             }
         }
     }

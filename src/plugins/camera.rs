@@ -66,7 +66,7 @@ pub fn spawn_camera(mut commands: Commands) {
         ScreenSpaceAmbientOcclusionBundle::default(),
         Name::new("Game Camera"),
         GameCamera,
-        #[cfg(feature = "debug")]
+        #[cfg(feature = "editor")]
         transform_gizmo_bevy::GizmoCamera,
     ));
 }

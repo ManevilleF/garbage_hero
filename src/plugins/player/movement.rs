@@ -102,9 +102,7 @@ fn draw_gizmos(
 ) {
     for (player, gtr, vel) in &players {
         let position = gtr.translation();
-        let forward = gtr.forward();
         let color = assets.colors[player.id as usize];
         gizmos.arrow(position, position + vel.0, color);
-        gizmos.ray(position, *forward, color);
     }
 }
