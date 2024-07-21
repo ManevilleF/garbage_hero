@@ -3,7 +3,7 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 use leafwing_input_manager::prelude::*;
 
-use super::{input::PlayerInputAction, PLAYER_HEIGHT, PLAYER_RADIUS};
+use super::{assets::PlayerAssets, input::PlayerInputAction, Player, PLAYER_HEIGHT, PLAYER_RADIUS};
 
 pub struct PlayerMovementPlugin;
 
@@ -15,6 +15,8 @@ impl Plugin for PlayerMovementPlugin {
                 Update,
                 (apply_gravity, apply_movement, apply_movement_damping).chain(),
             );
+        #[cfg(feature = "debug")]
+        app.add_systems(PostUpdate, draw_gizmos);
     }
 }
 
@@ -67,7 +69,7 @@ pub fn apply_movement(
     let dt = time.delta_seconds();
     for (mut velocity, action_state, speed) in &mut controllers {
         if let Some(dir) = PlayerInputAction::get_movement(action_state) {
-            velocity.x += dir.x * dt * speed.0;
+            velocity.x -= dir.x * dt * speed.0;
             velocity.z += dir.y * dt * speed.0;
         }
     }
@@ -90,5 +92,19 @@ fn apply_movement_damping(mut query: Query<(&MovementDampingFactor, &mut LinearV
     for (damping_factor, mut velocity) in &mut query {
         velocity.x *= damping_factor.0;
         velocity.z *= damping_factor.0;
+    }
+}
+
+fn draw_gizmos(
+    mut gizmos: Gizmos,
+    players: Query<(&Player, &GlobalTransform, &LinearVelocity)>,
+    assets: Res<PlayerAssets>,
+) {
+    for (player, gtr, vel) in &players {
+        let position = gtr.translation();
+        let forward = gtr.forward();
+        let color = assets.colors[player.id as usize];
+        gizmos.arrow(position, position + vel.0, color);
+        gizmos.ray(position, *forward, color);
     }
 }

@@ -11,7 +11,7 @@ use bevy::{
 const CAM_SCALE_COEF: f32 = 1.0;
 const CAM_SCALE_MARGIN: f32 = 1.0;
 const CAM_MIN_SCALE: f32 = 0.05;
-const CAM_Y_OFFSET: f32 = 20.0;
+const CAM_Y_OFFSET: f32 = 30.0;
 /// How quickly should the camera snap to the desired location.
 const CAMERA_DECAY_RATE: f32 = 2.;
 
@@ -51,7 +51,7 @@ impl<'w, 's> CameraParams<'w, 's> {
 pub fn spawn_camera(mut commands: Commands) {
     commands.spawn((
         Camera3dBundle {
-            transform: Transform::from_xyz(10.0, CAM_Y_OFFSET, 10.0)
+            transform: Transform::from_xyz(0.0, CAM_Y_OFFSET, -30.0)
                 .looking_at(Vec3::ZERO, Dir3::Y),
             projection: Projection::Orthographic(OrthographicProjection {
                 scaling_mode: ScalingMode::WindowSize(1.0),

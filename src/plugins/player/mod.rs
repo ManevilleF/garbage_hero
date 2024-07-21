@@ -75,7 +75,7 @@ impl PlayerBundle {
             name: Name::new(format!("Player {}: {}", player.id, player.controller)),
             health: Health::new(BASE_PLAYER_HEALTH),
             input: PlayerInputBundle::new(player.controller),
-            movement: PlayerMovementBundle::new(30.0, 0.9),
+            movement: PlayerMovementBundle::new(50.0, 0.9),
             skills: PlayerSkillsBundle::new(),
             pbr: PbrBundle {
                 mesh: assets.mesh.clone_weak(),

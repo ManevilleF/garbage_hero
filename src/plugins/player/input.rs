@@ -106,7 +106,7 @@ pub fn handle_game_input(
 ) {
     let players: HashMap<GameController, u8> =
         players.iter().map(|p| (p.controller, p.id)).collect();
-    let new_player_id = || players.values().max().copied().unwrap_or(0) + 1;
+    let new_player_id = || players.values().max().copied().unwrap_or(0);
     for event in gamepad_evr.read() {
         let controller = GameController::Gamepad(event.gamepad);
         match &event.connection {

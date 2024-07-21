@@ -30,14 +30,15 @@ impl Component for Collected {
                     log::error!("Cannot find collector of `Collected` entity {entity:?}");
                     return;
                 };
-                // Can be already removed
-                collector.insert(entity);
+                if !collector.insert(entity) {
+                    return;
+                };
                 let Some(mut layer) = world.get_mut::<CollisionLayers>(entity) else {
                     log::error!("on_add hook triggered for {entity:?} without `CollisionLayers`");
                     return;
                 };
                 // Collected entities should no longer interact withsome things
-                layer.filters.remove(ObjectLayer::Map);
+                layer.filters.remove(ObjectLayer::Player);
                 layer.filters.remove(ObjectLayer::Collector);
                 let Some(mut scale) = world.get_mut::<GravityScale>(entity) else {
                     log::warn!("on_add hook triggered for {entity:?} without `GravityScale`");
@@ -63,7 +64,7 @@ impl Component for Collected {
                     return;
                 };
                 // Reset filter
-                layer.filters.add(ObjectLayer::Map);
+                layer.filters.add(ObjectLayer::Player);
                 layer.filters.add(ObjectLayer::Collector);
 
                 // Reset gravity scale
@@ -85,14 +86,15 @@ pub struct Collector {
 }
 
 impl Collector {
-    const ROTATION_SPEED: f32 = 2.0;
+    const ANGULAR_SPEED: f32 = 10.0;
     const COLLECTED_SPEED: f32 = 10.0;
+    const MAX_ITEMS: usize = 100;
 
     pub fn new(min_radius: f32, max_distance: f32) -> Self {
         Self {
             circle_distrib: CircularDistribution::new(min_radius, max_distance),
             arc_distrib: ArcDistribution::new(min_radius, max_distance),
-            collected: Vec::new(),
+            collected: Vec::with_capacity(Self::MAX_ITEMS),
         }
     }
 
@@ -100,8 +102,24 @@ impl Collector {
         self.circle_distrib.radius(self.len())
     }
 
+    /// Calculate the rotation angle in radians for a constant linear speed.
+    ///
+    /// # Arguments
+    ///
+    /// * `radius` - The radius of the circular path (m).
+    /// * `dt` - The time interval over which to calculate the rotation angle (s).
+    ///
+    /// # Returns
+    ///
+    /// * `f32` - The rotation angle in radians.
+    fn rotation_angle(radius: f32, dt: f32) -> f32 {
+        let angular_speed = Self::ANGULAR_SPEED / radius;
+        angular_speed * dt
+    }
+
     pub fn tick_circle_rotation(&mut self, dt: f32) {
-        self.circle_distrib.rotate(dt * Self::ROTATION_SPEED);
+        self.circle_distrib
+            .rotate(Self::rotation_angle(self.radius(), dt));
     }
 
     pub fn update_radius(mut collectors: Query<(&mut Transform, &Self), Changed<Self>>) {
@@ -120,10 +138,14 @@ impl Collector {
         self.collected.is_empty()
     }
 
-    pub fn insert(&mut self, entity: Entity) {
+    pub fn insert(&mut self, entity: Entity) -> bool {
+        if self.len() >= Self::MAX_ITEMS {
+            return false;
+        }
         self.collected.push(entity);
         self.circle_distrib.set_amount(self.len());
         self.arc_distrib.set_amount(self.len());
+        true
     }
 
     pub fn remove(&mut self, entity: Entity) -> Option<Entity> {
