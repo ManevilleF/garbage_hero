@@ -20,8 +20,8 @@ pub enum GarbageItem {
     BigRock,
     Gear,
     Pipe,
-    Bottle,
-    PoisonVial,
+    TrafficCone,
+    HayStack,
     FirePot,
 }
 
@@ -36,8 +36,8 @@ impl GarbageItem {
             Self::BigRock => Health::new(30),
             Self::Gear => Health::new(50),
             Self::Pipe => Health::new(50),
-            Self::Bottle => Health::new(1),
-            Self::PoisonVial => Health::new(1),
+            Self::TrafficCone => Health::new(1),
+            Self::HayStack => Health::new(1),
             Self::FirePot => Health::new(1),
         }
     }
@@ -52,8 +52,8 @@ impl GarbageItem {
             Self::BigRock => SLATE_GRAY.into(),
             Self::Gear => STEEL_BLUE.into(),
             Self::Pipe => LIGHT_SLATE_GRAY.into(),
-            Self::Bottle => AZURE.into(),
-            Self::PoisonVial => MEDIUM_SPRING_GREEN.into(),
+            Self::TrafficCone => ORANGE.into(),
+            Self::HayStack => YELLOW.into(),
             Self::FirePot => ORANGE_RED.into(),
         }
     }
@@ -62,13 +62,18 @@ impl GarbageItem {
         match self {
             Self::WoodenCrate => Cuboid::from_size(Vec3::ONE).into(),
             Self::Barrel | Self::ExplosiveBarrel => Cylinder::new(0.5, 1.0).into(),
-            Self::SmallRock => Sphere::new(0.2).mesh().ico(10).unwrap(),
-            Self::MediumRock => Sphere::new(0.6).mesh().ico(12).unwrap(),
+            Self::SmallRock => Sphere::new(0.4).mesh().ico(10).unwrap(),
+            Self::MediumRock => Sphere::new(0.8).mesh().ico(12).unwrap(),
             Self::BigRock => Sphere::new(1.0).mesh().ico(15).unwrap(),
             Self::Gear => Extrusion::new(Annulus::new(0.8, 1.0), 0.5).into(),
-            Self::Pipe => Cylinder::new(0.2, 1.0).into(),
-            Self::Bottle => Capsule3d::new(0.15, 0.4).into(),
-            Self::PoisonVial | Self::FirePot => Sphere::new(0.1).into(),
+            Self::Pipe => Cylinder::new(0.5, 1.5).into(),
+            Self::TrafficCone => Cone {
+                radius: 0.5,
+                height: 1.0,
+            }
+            .into(),
+            Self::HayStack => Cylinder::new(0.75, 1.5).into(),
+            Self::FirePot => Sphere::new(0.5).into(),
         }
     }
 
@@ -76,17 +81,18 @@ impl GarbageItem {
         match self {
             Self::WoodenCrate => Collider::cuboid(1.0, 1.0, 1.0),
             Self::Barrel | Self::ExplosiveBarrel => Collider::cylinder(0.5, 1.0),
-            Self::SmallRock => Collider::sphere(0.2),
-            Self::MediumRock => Collider::sphere(0.6),
+            Self::SmallRock => Collider::sphere(0.4),
+            Self::MediumRock => Collider::sphere(0.8),
             Self::BigRock => Collider::sphere(1.0),
             Self::Gear => Collider::compound(vec![(
                 Vec3::ZERO,
                 Quat::from_rotation_x(FRAC_PI_2),
                 Collider::cylinder(1.0, 0.5),
             )]),
-            Self::Pipe => Collider::cylinder(0.1, 1.0),
-            Self::Bottle => Collider::capsule(0.1, 0.4),
-            Self::PoisonVial | Self::FirePot => Collider::sphere(0.1),
+            Self::Pipe => Collider::cylinder(0.5, 1.5),
+            Self::TrafficCone => Collider::cone(0.5, 1.0),
+            Self::HayStack => Collider::cylinder(0.75, 1.5),
+            Self::FirePot => Collider::sphere(0.5),
         }
     }
 }
@@ -118,7 +124,7 @@ impl GarbageBundle {
             rigidbody: RigidBody::Dynamic,
             collider: assets.colliders[collectible as usize].clone(),
             margin: CollisionMargin(0.05),
-            ang_damping: AngularDamping(1.0),
+            ang_damping: AngularDamping(1.5),
             layer: CollisionLayers::new(ObjectLayer::Collectible, LayerMask::ALL),
             gravity_scale: GravityScale(1.0),
             name: Name::new(format!("{collectible}")),

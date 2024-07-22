@@ -48,7 +48,7 @@ impl Player {
             let mut bundle = PlayerBundle::new(self, assets);
             bundle.pbr.transform.translation = position;
             world.spawn(bundle).with_children(|b| {
-                let collector_bundle = CollectorBundle::new(3.0, 1.5);
+                let collector_bundle = CollectorBundle::new(3.0, 1.0);
                 b.spawn(collector_bundle);
             });
         }

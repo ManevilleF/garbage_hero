@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use std::f32::consts::{FRAC_PI_4, FRAC_PI_8, TAU};
+use std::f32::consts::{FRAC_PI_4, TAU};
 use strum::Display;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Reflect, Default, Display)]
@@ -85,17 +85,16 @@ impl PointDistribution {
     /// * `amount` - The number of points to be distributed.
     /// * `shape` - The new distribution shape
     pub fn update(&mut self, amount: usize, shape: DistributionShape) {
-        let radius = self.radius(amount);
         self.points = match shape {
             DistributionShape::Arc => {
-                let mut radius = radius;
+                let mut radius = self.min_radius;
                 let mut offset: usize = 0;
                 (0..amount)
                     .map(|i| {
                         let theta = self.max_distance / radius;
                         let inner = i - offset;
                         let mut angle_offset = inner as f32 * theta;
-                        if angle_offset > FRAC_PI_8 {
+                        if angle_offset > FRAC_PI_4 {
                             offset = i;
                             radius += self.max_distance;
                             angle_offset = 0.0;
@@ -112,6 +111,7 @@ impl PointDistribution {
                     .collect()
             }
             DistributionShape::Circle => {
+                let radius = self.radius(amount);
                 let theta = TAU / (amount as f32);
                 (0..amount)
                     .map(|i| {

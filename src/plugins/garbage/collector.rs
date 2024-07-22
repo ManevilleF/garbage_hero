@@ -25,12 +25,22 @@ impl Component for Collected {
                     log::error!("on_remove hook triggered for {entity:?} without `Collected`");
                     return;
                 };
+                let collected_pos = world
+                    .get::<GlobalTransform>(entity)
+                    .map(|gtr| gtr.translation().xz())
+                    .unwrap();
+                let collector_pos = world
+                    .get::<GlobalTransform>(collected.collector_entity)
+                    .map(|gtr| gtr.translation().xz())
+                    .unwrap();
+                let dir = Dir2::new(collected_pos - collector_pos).ok();
+
                 let Some(mut collector) = world.get_mut::<Collector>(collected.collector_entity)
                 else {
                     log::error!("Cannot find collector of `Collected` entity {entity:?}");
                     return;
                 };
-                if !collector.insert(entity) {
+                if !collector.insert(entity, dir) {
                     return;
                 };
                 let Some(mut layer) = world.get_mut::<CollisionLayers>(entity) else {
@@ -133,11 +143,18 @@ impl Collector {
         self.collected.is_empty()
     }
 
-    pub fn insert(&mut self, entity: Entity) -> bool {
+    pub fn insert(&mut self, entity: Entity, dir: Option<Dir2>) -> bool {
         if self.len() >= Self::MAX_ITEMS {
             return false;
         }
-        self.collected.push(entity);
+        match dir.and_then(|d| self.distribution.find_closest_aligned_point(d)) {
+            Some((index, _)) => {
+                self.collected.insert(index, entity);
+            }
+            None => {
+                self.collected.push(entity);
+            }
+        }
         self.distribution.update(self.len(), self.shape);
         true
     }
