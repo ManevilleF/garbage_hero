@@ -90,6 +90,7 @@ impl Component for Collected {
 #[derive(Debug, Component, Reflect)]
 #[reflect(Component)]
 pub struct Collector {
+    pub enabled: bool,
     distribution: PointDistribution,
     shape: DistributionShape,
     collected: Vec<Entity>,
@@ -98,10 +99,12 @@ pub struct Collector {
 impl Collector {
     const ANGULAR_SPEED: f32 = 10.0;
     const COLLECTED_SPEED: f32 = 10.0;
-    const MAX_ITEMS: usize = 100;
+    const MAX_ITEMS: usize = 75;
+    const COLLECTOR_RADIUS_COEF: f32 = 1.2;
 
     pub fn new(min_radius: f32, max_distance: f32) -> Self {
         Self {
+            enabled: false,
             distribution: PointDistribution::new(min_radius, max_distance),
             shape: DistributionShape::Circle,
             collected: Vec::with_capacity(Self::MAX_ITEMS),
@@ -129,7 +132,7 @@ impl Collector {
 
     pub fn update_radius(mut collectors: Query<(&mut Transform, &Self), Changed<Self>>) {
         for (mut tr, collector) in &mut collectors {
-            tr.scale = Vec3::splat(collector.radius());
+            tr.scale = Vec3::splat(collector.radius() * Self::COLLECTOR_RADIUS_COEF);
         }
     }
 
@@ -239,10 +242,13 @@ impl Collector {
 
     pub fn collect_items(
         mut commands: Commands,
-        collectors: Query<(Entity, &CollidingEntities), With<Self>>,
+        collectors: Query<(Entity, &CollidingEntities, &Self)>,
         items: Query<Entity, (With<GarbageItem>, Without<Collected>, Without<ThrownItem>)>,
     ) {
-        for (collector_entity, collision) in &collectors {
+        for (collector_entity, collision, collector) in &collectors {
+            if !collector.enabled {
+                continue;
+            }
             for item in items.iter_many(&collision.0) {
                 commands.entity(item).insert(Collected { collector_entity });
             }

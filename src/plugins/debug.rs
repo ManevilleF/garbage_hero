@@ -35,11 +35,11 @@ fn commands_ui(mut commands: Commands, mut context: EguiContexts, assets: Res<Ga
     });
 }
 
-fn players_ui(mut context: EguiContexts, players: Query<(&Player, &ActiveSkill)>) {
+fn players_ui(mut context: EguiContexts, players: Query<(&Player, &ActiveSkill, &SkillState)>) {
     let ctx = context.ctx_mut();
     egui::Window::new("Players").show(ctx, |ui| {
         egui::Grid::new("Player Grid").show(ui, |ui| {
-            for (player, skill) in &players {
+            for (player, skill, state) in &players {
                 ui.label(format!("{}", player.id));
                 ui.label(format!("{}", player.controller));
                 ui.end_row();
@@ -48,7 +48,15 @@ fn players_ui(mut context: EguiContexts, players: Query<(&Player, &ActiveSkill)>
                     ui.label(format!("{}", skill));
                 }
                 ui.end_row();
+                ui.label("Skills");
+                ui.end_row();
+                for (skill, cooldown) in &state.cooldowns {
+                    ui.label(format!("{}", skill));
+                    ui.label(format!("{}", *cooldown));
+                    ui.end_row();
+                }
             }
+            ui.spacing();
         });
     });
 }

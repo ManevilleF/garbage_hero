@@ -1,3 +1,4 @@
+use avian3d::prelude::{ExternalImpulse, LinearVelocity};
 use bevy::{log, prelude::*, utils::HashMap};
 use leafwing_input_manager::action_state::ActionState;
 use strum::{Display, EnumIter, IntoEnumIterator};
@@ -20,7 +21,7 @@ impl Plugin for PlayerSkillsPlugin {
                 Update,
                 (
                     (update_aim, apply_aim).chain(),
-                    (update_skills, (defend_skill, throw_skill)).chain(),
+                    (update_skills, (collector_skills, throw_skill, dash_skill)).chain(),
                 ),
             );
         #[cfg(feature = "debug")]
@@ -42,7 +43,7 @@ impl PlayerSkill {
         match self {
             Self::Collect => 1.0,
             Self::Shoot => 0.1,
-            Self::Dash => 5.0,
+            Self::Dash => 2.0,
             Self::Defend => 0.0,
             Self::Burst => 10.0,
         }
@@ -190,7 +191,7 @@ fn update_skills(
             }
         }
         for (skill, cooldown) in &state.cooldowns {
-            if *cooldown <= 0.0 && input.pressed(&PlayerInputAction::Skill(*skill)) {
+            if *cooldown <= 0.0 && input.just_pressed(&PlayerInputAction::Skill(*skill)) {
                 active.active = Some(*skill);
                 break;
             }
@@ -198,7 +199,7 @@ fn update_skills(
     }
 }
 
-fn defend_skill(
+fn collector_skills(
     players: Query<(&Children, &ActiveSkill), (With<Player>, Changed<ActiveSkill>)>,
     mut collectors: Query<&mut Collector>,
 ) {
@@ -212,6 +213,10 @@ fn defend_skill(
             };
             if collector.shape() != shape {
                 collector.set_shape(shape);
+            }
+            let enabled = active.active == Some(PlayerSkill::Collect);
+            if collector.enabled != enabled {
+                collector.enabled = enabled;
             }
         }
     }
@@ -233,6 +238,25 @@ fn throw_skill(
                 log::info!("Player {}, Nothing to shoot", player.id);
             }
         }
+    }
+}
+
+fn dash_skill(
+    mut commands: Commands,
+    players: Query<(Entity, &PlayerAim, &ActiveSkill, &LinearVelocity), Changed<ActiveSkill>>,
+) {
+    const DASH_SPEED: f32 = 200.0;
+
+    for (entity, aim, skill, linvel) in &players {
+        if skill.active != Some(PlayerSkill::Dash) {
+            continue;
+        }
+        let direction = (linvel.0.length_squared() > 1.0)
+            .then(|| linvel.0.normalize())
+            .unwrap_or(*aim.direction3());
+        commands
+            .entity(entity)
+            .insert(ExternalImpulse::new(direction * DASH_SPEED));
     }
 }
 
