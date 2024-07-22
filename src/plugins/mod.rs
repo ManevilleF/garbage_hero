@@ -1,7 +1,7 @@
 mod camera;
 mod common;
 #[cfg(feature = "editor")]
-mod debug;
+mod editor;
 mod garbage;
 mod light;
 mod map;
@@ -10,7 +10,7 @@ mod player;
 pub use camera::{CameraPlugin, GameCamera};
 pub use common::*;
 #[cfg(feature = "editor")]
-pub use debug::DebugPlugin;
+pub use editor::DebugEditorPlugin;
 pub use garbage::GarbagePlugin;
 pub use light::LightPlugin;
 pub use map::MapPlugin;

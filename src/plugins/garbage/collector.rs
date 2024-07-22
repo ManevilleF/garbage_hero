@@ -150,8 +150,14 @@ impl Collector {
     }
 
     pub fn set_shape(&mut self, shape: DistributionShape) {
+        log::info!("Collector shape is now a `{shape}`");
         self.shape = shape;
         self.distribution.update(self.len(), self.shape);
+    }
+
+    #[inline]
+    pub const fn shape(&self) -> DistributionShape {
+        self.shape
     }
 
     pub fn update_collected_position(
@@ -174,14 +180,22 @@ impl Collector {
         }
     }
 
-    pub fn auto_rotate(time: Res<Time>, mut collectors: Query<&mut Self>) {
+    pub fn auto_rotate(time: Res<Time>, mut collectors: Query<(&GlobalTransform, &mut Self)>) {
         let dt = time.delta_seconds();
-        for mut collector in &mut collectors {
-            if collector.shape == DistributionShape::Circle {
-                let radius = collector.radius();
-                collector
-                    .distribution
-                    .rotate(Self::rotation_angle(radius, dt));
+        for (gtr, mut collector) in &mut collectors {
+            match collector.shape {
+                DistributionShape::Circle => {
+                    let radius = collector.radius();
+                    collector
+                        .distribution
+                        .rotate(Self::rotation_angle(radius, dt));
+                }
+                DistributionShape::Arc => {
+                    let dir = gtr.forward().xz();
+                    collector
+                        .distribution
+                        .set_direction(Dir2::new_unchecked(dir));
+                }
             }
         }
     }

@@ -2,16 +2,19 @@ use bevy::{log, prelude::*};
 use leafwing_input_manager::action_state::ActionState;
 use strum::EnumIter;
 
-use crate::plugins::camera::CameraParams;
+use crate::plugins::{
+    camera::CameraParams,
+    garbage::{Collector, DistributionShape},
+};
 
-use super::{assets::PlayerAssets, input::PlayerInputAction, GameController, Player};
+use super::{input::PlayerInputAction, GameController, Player};
 
 pub struct PlayerSkillsPlugin;
 
 impl Plugin for PlayerSkillsPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<PlayerAim>()
-            .add_systems(Update, (update_aim, apply_aim).chain());
+            .add_systems(Update, ((update_aim, apply_aim).chain(), defend_skill));
         #[cfg(feature = "debug")]
         app.add_systems(PostUpdate, draw_gizmos);
     }
@@ -115,6 +118,25 @@ fn update_aim(
                 };
                 let mut dir = aim.map_unchanged(|aim| &mut aim.dir);
                 dir.set_if_neq(direction);
+            }
+        }
+    }
+}
+
+fn defend_skill(
+    players: Query<(&Children, &ActionState<PlayerInputAction>), With<Player>>,
+    mut collectors: Query<&mut Collector>,
+) {
+    for (children, state) in &players {
+        let mut collectors = collectors.iter_many_mut(children);
+        while let Some(mut collector) = collectors.fetch_next() {
+            let shape = if state.pressed(&PlayerInputAction::Skill(PlayerSkill::Defend)) {
+                DistributionShape::Arc
+            } else {
+                DistributionShape::Circle
+            };
+            if collector.shape() != shape {
+                collector.set_shape(shape);
             }
         }
     }

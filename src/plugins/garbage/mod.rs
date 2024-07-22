@@ -5,6 +5,7 @@ mod distribution;
 mod items;
 
 pub use collector::{Collector, CollectorBundle};
+pub use distribution::DistributionShape;
 pub use items::{GarbageAssets, GarbageBundle, GarbageItem};
 
 use collector::*;

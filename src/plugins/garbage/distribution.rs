@@ -1,7 +1,8 @@
 use bevy::prelude::*;
-use std::f32::consts::TAU;
+use std::f32::consts::{FRAC_PI_4, FRAC_PI_8, TAU};
+use strum::Display;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Reflect, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Reflect, Default, Display)]
 #[reflect(Default)]
 pub enum DistributionShape {
     #[default]
@@ -77,42 +78,50 @@ impl PointDistribution {
         radius(self.min_radius, self.max_distance, amount)
     }
 
-    /// Updates the amount of points in the circle, effectively updating the points caches
+    /// Updates the amount of points in the distribution, effectively updating the points caches
     ///
     /// # Arguments
     ///
     /// * `amount` - The number of points to be distributed.
+    /// * `shape` - The new distribution shape
     pub fn update(&mut self, amount: usize, shape: DistributionShape) {
-        if amount == self.points.len() {
-            return;
-        }
         let radius = self.radius(amount);
-        let theta = TAU / (amount as f32);
         self.points = match shape {
             DistributionShape::Arc => {
-                let max_arc_points = (amount / 4).max(1);
+                let mut radius = radius;
+                let mut offset: usize = 0;
                 (0..amount)
                     .map(|i| {
-                        let r = ((i / max_arc_points) as f32).mul_add(self.max_distance, radius);
-                        let inner = i % max_arc_points;
-                        let mut step = theta.mul_add(inner as f32, self.current_angle);
-                        if inner % 2 == 0 {
-                            step = -step;
+                        let theta = self.max_distance / radius;
+                        let inner = i - offset;
+                        let mut angle_offset = inner as f32 * theta;
+                        if angle_offset > FRAC_PI_8 {
+                            offset = i;
+                            radius += self.max_distance;
+                            angle_offset = 0.0;
                         }
-                        let x = r * step.cos();
-                        let y = r * step.sin();
+                        let step = if i % 2 == 0 {
+                            self.current_angle + angle_offset
+                        } else {
+                            self.current_angle - angle_offset
+                        };
+                        let x = radius * step.cos();
+                        let y = radius * step.sin();
                         Vec2::new(x, y)
                     })
                     .collect()
             }
-            DistributionShape::Circle => (0..amount)
-                .map(|i| {
-                    let step = theta.mul_add(i as f32, self.current_angle);
-                    let x = radius * step.cos();
-                    let y = radius * step.sin();
-                    Vec2::new(x, y)
-                })
-                .collect(),
+            DistributionShape::Circle => {
+                let theta = TAU / (amount as f32);
+                (0..amount)
+                    .map(|i| {
+                        let step = theta.mul_add(i as f32, self.current_angle);
+                        let x = radius * step.cos();
+                        let y = radius * step.sin();
+                        Vec2::new(x, y)
+                    })
+                    .collect()
+            }
         };
     }
 

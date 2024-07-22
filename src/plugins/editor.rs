@@ -28,9 +28,9 @@ use super::{
     map::{MapAssets, MapElementBundle},
 };
 
-pub struct DebugPlugin;
+pub struct DebugEditorPlugin;
 
-impl Plugin for DebugPlugin {
+impl Plugin for DebugEditorPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(bevy_framepace::FramepacePlugin) // reduces input lag
             .add_plugins(DefaultInspectorConfigPlugin)
