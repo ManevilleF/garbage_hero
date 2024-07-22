@@ -1,6 +1,6 @@
-use bevy::{log, prelude::*};
+use bevy::{log, prelude::*, utils::HashMap};
 use leafwing_input_manager::action_state::ActionState;
-use strum::EnumIter;
+use strum::{EnumIter, IntoEnumIterator};
 
 use crate::plugins::{
     camera::CameraParams,
@@ -14,7 +14,15 @@ pub struct PlayerSkillsPlugin;
 impl Plugin for PlayerSkillsPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<PlayerAim>()
-            .add_systems(Update, ((update_aim, apply_aim).chain(), defend_skill));
+            .register_type::<SkillState>()
+            .register_type::<ActiveSkill>()
+            .add_systems(
+                Update,
+                (
+                    (update_aim, apply_aim).chain(),
+                    (update_skills, (defend_skill, throw_skill)).chain(),
+                ),
+            );
         #[cfg(feature = "debug")]
         app.add_systems(PostUpdate, draw_gizmos);
     }
@@ -27,6 +35,38 @@ pub enum PlayerSkill {
     Dash,
     Defend,
     Burst,
+}
+
+impl PlayerSkill {
+    pub const fn cooldown(self) -> f32 {
+        match self {
+            Self::Collect => 1.0,
+            Self::Shoot => 0.1,
+            Self::Dash => 5.0,
+            Self::Defend => 0.0,
+            Self::Burst => 10.0,
+        }
+    }
+}
+
+#[derive(Debug, Reflect, Component)]
+#[reflect(Component)]
+pub struct SkillState {
+    pub cooldowns: HashMap<PlayerSkill, f32>,
+}
+
+#[derive(Debug, Reflect, Component, Default)]
+#[reflect(Component)]
+pub struct ActiveSkill {
+    pub active: Option<PlayerSkill>,
+}
+
+impl Default for SkillState {
+    fn default() -> Self {
+        Self {
+            cooldowns: PlayerSkill::iter().map(|s| (s, 0.0)).collect(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Component, Reflect)]
@@ -55,12 +95,16 @@ impl PlayerAim {
 #[derive(Bundle)]
 pub struct PlayerSkillsBundle {
     pub aim: PlayerAim,
+    pub state: SkillState,
+    pub active: ActiveSkill,
 }
 
 impl PlayerSkillsBundle {
     pub fn new() -> Self {
         Self {
             aim: PlayerAim::new(),
+            state: SkillState::default(),
+            active: ActiveSkill::default(),
         }
     }
 }
@@ -123,20 +167,70 @@ fn update_aim(
     }
 }
 
+fn update_skills(
+    time: Res<Time>,
+    mut players: Query<(
+        &mut SkillState,
+        &mut ActiveSkill,
+        &ActionState<PlayerInputAction>,
+    )>,
+) {
+    let dt = time.delta_seconds();
+    for (mut state, mut active, input) in &mut players {
+        state
+            .cooldowns
+            .values_mut()
+            .for_each(|cooldown| *cooldown = (*cooldown - dt).max(0.0));
+        if let Some(skill) = active.active {
+            if !input.pressed(&PlayerInputAction::Skill(skill)) {
+                active.active = None;
+                state.cooldowns.insert(skill, skill.cooldown());
+            } else {
+                continue;
+            }
+        }
+        for (skill, cooldown) in &state.cooldowns {
+            if *cooldown <= 0.0 && input.pressed(&PlayerInputAction::Skill(*skill)) {
+                active.active = Some(*skill);
+                break;
+            }
+        }
+    }
+}
+
 fn defend_skill(
-    players: Query<(&Children, &ActionState<PlayerInputAction>), With<Player>>,
+    players: Query<(&Children, &ActiveSkill), (With<Player>, Changed<ActiveSkill>)>,
     mut collectors: Query<&mut Collector>,
 ) {
-    for (children, state) in &players {
+    for (children, active) in &players {
         let mut collectors = collectors.iter_many_mut(children);
         while let Some(mut collector) = collectors.fetch_next() {
-            let shape = if state.pressed(&PlayerInputAction::Skill(PlayerSkill::Defend)) {
+            let shape = if active.active == Some(PlayerSkill::Defend) {
                 DistributionShape::Arc
             } else {
                 DistributionShape::Circle
             };
             if collector.shape() != shape {
                 collector.set_shape(shape);
+            }
+        }
+    }
+}
+
+fn throw_skill(
+    mut commands: Commands,
+    players: Query<(&Player, &Children, &ActiveSkill, &PlayerAim), Changed<ActiveSkill>>,
+    collectors: Query<&Collector>,
+) {
+    for (player, children, active, aim) in &players {
+        if active.active != Some(PlayerSkill::Shoot) {
+            continue;
+        }
+        for collector in collectors.iter_many(children) {
+            if let Some(command) = collector.throw_collected(aim.direction2(), 50.0) {
+                commands.add(command);
+            } else {
+                log::info!("Player {}, Nothing to shoot", player.id);
             }
         }
     }

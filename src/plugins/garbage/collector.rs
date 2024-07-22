@@ -7,7 +7,7 @@ use bevy::{
 
 use crate::ObjectLayer;
 
-use super::{DistributionShape, GarbageItem, PointDistribution};
+use super::{DistributionShape, GarbageItem, PointDistribution, ThrownItem};
 
 #[derive(Debug, Reflect)]
 #[reflect(Component)]
@@ -225,9 +225,14 @@ impl Collector {
         };
         let direction = Vec3::new(direction.x, 0.0, direction.y);
         Some(move |world: &mut World| {
+            let mass = world
+                .get::<ColliderMassProperties>(entity)
+                .map(|p| p.mass.0)
+                .unwrap_or(1.0);
             let mut entity_cmd = world.entity_mut(entity);
             entity_cmd
-                .insert(ExternalImpulse::new(direction * force))
+                .insert(ExternalImpulse::new(direction * force * mass))
+                .insert(ThrownItem)
                 .remove::<Collected>();
         })
     }
@@ -235,7 +240,7 @@ impl Collector {
     pub fn collect_items(
         mut commands: Commands,
         collectors: Query<(Entity, &CollidingEntities), With<Self>>,
-        items: Query<Entity, (With<GarbageItem>, Without<Collected>)>,
+        items: Query<Entity, (With<GarbageItem>, Without<Collected>, Without<ThrownItem>)>,
     ) {
         for (collector_entity, collision) in &collectors {
             for item in items.iter_many(&collision.0) {

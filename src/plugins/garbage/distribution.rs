@@ -151,7 +151,7 @@ impl PointDistribution {
     ///
     /// # Returns
     ///
-    /// * The closest point as a Vec2.
+    /// * The closest point index and value.
     pub fn find_closest_aligned_point(&self, direction: Dir2) -> Option<(usize, Vec2)> {
         // Convert direction to an angle
         let target_angle = direction.y.atan2(direction.x);

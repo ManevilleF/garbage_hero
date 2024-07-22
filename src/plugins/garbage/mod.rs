@@ -1,3 +1,4 @@
+use avian3d::prelude::LinearVelocity;
 use bevy::prelude::*;
 
 mod collector;
@@ -22,6 +23,7 @@ impl Plugin for GarbagePlugin {
             .register_type::<GarbageItem>()
             .register_type::<Collected>()
             .register_type::<Collector>()
+            .register_type::<ThrownItem>()
             .register_type::<PointDistribution>();
         app.add_systems(
             FixedUpdate,
@@ -31,10 +33,27 @@ impl Plugin for GarbagePlugin {
                 Collector::collect_items,
             ),
         )
-        .add_systems(PostUpdate, Collector::update_radius);
+        .add_systems(PostUpdate, (Collector::update_radius, handle_thrown_items));
 
         #[cfg(feature = "debug")]
         app.add_systems(PostUpdate, Collector::draw_gizmos);
+    }
+}
+
+#[derive(Debug, Reflect, Component)]
+#[reflect(Component)]
+pub struct ThrownItem;
+
+fn handle_thrown_items(
+    mut commands: Commands,
+    items: Query<(Entity, &LinearVelocity), With<ThrownItem>>,
+) {
+    const TRESHOLD: f32 = 1.0;
+
+    for (entity, linvel) in &items {
+        if linvel.0.length_squared() <= TRESHOLD {
+            commands.entity(entity).remove::<ThrownItem>();
+        }
     }
 }
 
