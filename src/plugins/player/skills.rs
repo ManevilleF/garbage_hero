@@ -1,6 +1,6 @@
 use bevy::{log, prelude::*, utils::HashMap};
 use leafwing_input_manager::action_state::ActionState;
-use strum::{EnumIter, IntoEnumIterator};
+use strum::{Display, EnumIter, IntoEnumIterator};
 
 use crate::plugins::{
     camera::CameraParams,
@@ -28,7 +28,7 @@ impl Plugin for PlayerSkillsPlugin {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Reflect, Hash, EnumIter)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Reflect, Hash, EnumIter, Display)]
 pub enum PlayerSkill {
     Collect,
     Shoot,

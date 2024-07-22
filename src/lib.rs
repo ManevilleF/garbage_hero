@@ -51,6 +51,8 @@ pub fn run() -> AppExit {
         CameraPlugin,
         MapPlugin,
     ));
+    #[cfg(feature = "debug")]
+    app.add_plugins(DebugPlugin);
     #[cfg(feature = "editor")]
     app.add_plugins(DebugEditorPlugin);
     #[cfg(feature = "debug_physics")]

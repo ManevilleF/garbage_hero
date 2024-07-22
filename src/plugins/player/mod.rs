@@ -10,6 +10,7 @@ use assets::PlayerAssets;
 pub use input::GameController;
 use input::{PlayerInputBundle, PlayerInputPlugin};
 use movement::{PlayerMovementBundle, PlayerMovementPlugin};
+pub use skills::{ActiveSkill, PlayerSkill, SkillState};
 use skills::{PlayerSkillsBundle, PlayerSkillsPlugin};
 
 const MAX_PLAYERS: u8 = 24;

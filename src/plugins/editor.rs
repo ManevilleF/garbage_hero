@@ -34,7 +34,6 @@ impl Plugin for DebugEditorPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(bevy_framepace::FramepacePlugin) // reduces input lag
             .add_plugins(DefaultInspectorConfigPlugin)
-            .add_plugins(bevy_egui::EguiPlugin)
             .add_plugins(bevy_mod_picking::DefaultPickingPlugins)
             .add_plugins(TransformGizmoPlugin)
             .insert_resource(UiState::new())
@@ -175,8 +174,7 @@ impl UiState {
         let tree = state.main_surface_mut();
         let [game, _inspector] =
             tree.split_right(NodeIndex::root(), 0.75, vec![EguiWindow::Inspector]);
-        let [game, _hierarchy] =
-            tree.split_left(game, 0.2, vec![EguiWindow::Hierarchy, EguiWindow::Commands]);
+        let [game, _hierarchy] = tree.split_left(game, 0.2, vec![EguiWindow::Hierarchy]);
         let [_game, _bottom] =
             tree.split_below(game, 0.8, vec![EguiWindow::Resources, EguiWindow::Assets]);
 
@@ -206,7 +204,6 @@ impl UiState {
 enum EguiWindow {
     GameView,
     Hierarchy,
-    Commands,
     Resources,
     Assets,
     Inspector,
@@ -236,7 +233,6 @@ impl egui_dock::TabViewer for TabViewer<'_> {
                     *self.selection = InspectorSelection::Entities;
                 }
             }
-            EguiWindow::Commands => commands_ui(ui, self.world),
             EguiWindow::Resources => select_resource(ui, &type_registry, self.selection),
             EguiWindow::Assets => select_asset(ui, &type_registry, self.world, self.selection),
             EguiWindow::Inspector => match *self.selection {
@@ -274,27 +270,6 @@ impl egui_dock::TabViewer for TabViewer<'_> {
 
     fn clear_background(&self, window: &Self::Tab) -> bool {
         !matches!(window, EguiWindow::GameView)
-    }
-}
-
-fn commands_ui(ui: &mut egui::Ui, world: &mut World) {
-    if ui.button("Spawn Map Cube").clicked() {
-        let assets = world.resource::<MapAssets>();
-        world.spawn(MapElementBundle::new_cube(assets));
-    }
-    egui::ComboBox::from_label("Spawn Garbage Item")
-        .selected_text("Spawn Garbage")
-        .show_ui(ui, |ui| {
-            for item in GarbageItem::iter() {
-                if ui.button(format!("{item:?}")).clicked() {
-                    let assets = world.resource::<GarbageAssets>();
-                    world.spawn(GarbageBundle::new(item, assets));
-                }
-            }
-        });
-    if ui.button("Spawn 50 garbage items").clicked() {
-        let shape = Cuboid::new(50.0, 5.0, 50.0);
-        spawn_some_garbage(50, Vec3::Y * 5.0, shape)(world);
     }
 }
 

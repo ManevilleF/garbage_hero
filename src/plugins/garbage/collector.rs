@@ -244,7 +244,6 @@ impl Collector {
     ) {
         for (collector_entity, collision) in &collectors {
             for item in items.iter_many(&collision.0) {
-                println!("COLLECTED {item:?}");
                 commands.entity(item).insert(Collected { collector_entity });
             }
         }
