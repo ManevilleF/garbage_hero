@@ -1,12 +1,39 @@
-use super::{MAX_PLAYERS, PLAYER_HEIGHT, PLAYER_RADIUS};
+use std::f32::consts::PI;
+
+use super::MAX_PLAYERS;
 use bevy::prelude::*;
+
+#[derive(Bundle)]
+pub struct PlayerVisualsBundle {
+    pub scene: SceneBundle,
+}
+
+impl PlayerVisualsBundle {
+    pub fn new(id: usize, assets: &PlayerAssets) -> Self {
+        Self {
+            scene: SceneBundle {
+                scene: assets.scenes[id].clone_weak(),
+                transform: Transform {
+                    translation: Vec3::new(0.0, -1.5, 0.0),
+                    scale: Vec3::splat(3.0),
+                    rotation: Quat::from_rotation_y(PI),
+                },
+                ..default()
+            },
+        }
+    }
+}
+
+#[derive(Bundle)]
+pub struct PlayerMarkerBundle {
+    pub pbr: PbrBundle,
+}
 
 #[derive(Resource, Reflect)]
 #[reflect(Resource)]
 pub struct PlayerAssets {
     pub colors: [Color; MAX_PLAYERS as usize],
-    pub mesh: Handle<Mesh>,
-    pub materials: [Handle<StandardMaterial>; MAX_PLAYERS as usize],
+    pub scenes: [Handle<Scene>; MAX_PLAYERS as usize],
 }
 
 impl FromWorld for PlayerAssets {
@@ -37,20 +64,27 @@ impl FromWorld for PlayerAssets {
             Color::srgb_u8(115, 115, 115), // #737373 - Gray
             Color::srgb_u8(204, 204, 204), // #CCCCCC - Light Gray
         ];
-        let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
-        let materials = colors.map(|color| {
-            materials.add(StandardMaterial {
-                base_color: color,
-                fog_enabled: false,
-                ..default()
-            })
+        let server = world.resource::<AssetServer>();
+        let characters = [
+            "character-male-a",
+            "character-female-a",
+            "character-male-b",
+            "character-female-b",
+            "character-male-c",
+            "character-female-c",
+            "character-male-d",
+            "character-female-d",
+            "character-male-e",
+            "character-female-e",
+            "character-male-f",
+            "character-female-f",
+        ];
+        let characters = characters.map(|name| {
+            server.load(format!(
+                "kenney_mini-characters/Models/glb/{name}.glb#Scene0"
+            ))
         });
-        let mut meshes = world.resource_mut::<Assets<Mesh>>();
-        let mesh = meshes.add(Capsule3d::new(PLAYER_RADIUS, PLAYER_HEIGHT));
-        Self {
-            colors,
-            materials,
-            mesh,
-        }
+        let scenes = std::array::from_fn(|i| characters[i % characters.len()].clone());
+        Self { colors, scenes }
     }
 }

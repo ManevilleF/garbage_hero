@@ -6,7 +6,7 @@ mod input;
 mod movement;
 mod skills;
 
-use assets::PlayerAssets;
+use assets::{PlayerAssets, PlayerVisualsBundle};
 pub use input::GameController;
 use input::{PlayerInputBundle, PlayerInputPlugin};
 use movement::{PlayerMovementBundle, PlayerMovementPlugin};
@@ -14,8 +14,8 @@ pub use skills::{ActiveSkill, PlayerSkill, SkillState};
 use skills::{PlayerSkillsBundle, PlayerSkillsPlugin};
 
 const MAX_PLAYERS: u8 = 24;
-const PLAYER_RADIUS: f32 = 0.5;
-const PLAYER_HEIGHT: f32 = 1.8;
+const PLAYER_RADIUS: f32 = 0.8;
+const PLAYER_HEIGHT: f32 = 1.5;
 const BASE_PLAYER_HEALTH: u16 = 500;
 const BASE_SENSOR_STRENGTH: f32 = 10.0;
 
@@ -46,11 +46,13 @@ impl Player {
     pub fn spawn(self, position: Vec3) -> impl FnOnce(&mut World) {
         move |world| {
             let assets = world.resource::<PlayerAssets>();
-            let mut bundle = PlayerBundle::new(self, assets);
-            bundle.pbr.transform.translation = position;
+            let visuals_bundle = PlayerVisualsBundle::new(self.id as usize, assets);
+            let mut bundle = PlayerBundle::new(self);
+            bundle.spatial.transform.translation = position;
             world.spawn(bundle).with_children(|b| {
                 let collector_bundle = CollectorBundle::new(3.0, 1.0);
                 b.spawn(collector_bundle);
+                b.spawn(visuals_bundle);
             });
         }
     }
@@ -64,11 +66,11 @@ pub struct PlayerBundle {
     pub input: PlayerInputBundle,
     pub movement: PlayerMovementBundle,
     pub skills: PlayerSkillsBundle,
-    pub pbr: PbrBundle,
+    pub spatial: SpatialBundle,
 }
 
 impl PlayerBundle {
-    pub fn new(player: Player, assets: &PlayerAssets) -> Self {
+    pub fn new(player: Player) -> Self {
         if player.id >= MAX_PLAYERS {
             panic!("{MAX_PLAYERS} players supported");
         }
@@ -78,11 +80,7 @@ impl PlayerBundle {
             input: PlayerInputBundle::new(player.controller),
             movement: PlayerMovementBundle::new(75.0, 0.9),
             skills: PlayerSkillsBundle::new(),
-            pbr: PbrBundle {
-                mesh: assets.mesh.clone_weak(),
-                material: assets.materials[player.id as usize].clone_weak(),
-                ..default()
-            },
+            spatial: Default::default(),
             player,
         }
     }
