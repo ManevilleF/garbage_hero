@@ -59,7 +59,7 @@ pub fn spawn_camera(mut commands: Commands) {
                 near: -10.0,
                 ..default()
             }),
-            tonemapping: Tonemapping::ReinhardLuminance,
+            tonemapping: Tonemapping::AcesFitted,
             ..default()
         },
         BloomSettings::default(),

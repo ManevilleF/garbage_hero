@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use avian3d::prelude::LinearVelocity;
 use bevy::prelude::*;
 
@@ -5,11 +7,10 @@ mod collector;
 mod distribution;
 mod items;
 
-pub use collector::{Collector, CollectorBundle};
+pub use collector::{Collected, Collector, CollectorBundle};
 pub use distribution::DistributionShape;
 pub use items::{GarbageAssets, GarbageBundle, GarbageItem};
 
-use collector::*;
 use distribution::*;
 use rand::{seq::IteratorRandom, thread_rng};
 use strum::IntoEnumIterator;
@@ -33,7 +34,7 @@ impl Plugin for GarbagePlugin {
                 Collector::collect_items,
             ),
         )
-        .add_systems(PostUpdate, (Collector::update_radius, handle_thrown_items));
+        .add_systems(PostUpdate, (Collector::update_radius, reset_thrown_items));
 
         #[cfg(feature = "debug")]
         app.add_systems(PostUpdate, Collector::draw_gizmos);
@@ -42,9 +43,17 @@ impl Plugin for GarbagePlugin {
 
 #[derive(Debug, Reflect, Component)]
 #[reflect(Component)]
-pub struct ThrownItem;
+pub struct ThrownItem {
+    pub collector_entity: Entity,
+}
 
-fn handle_thrown_items(
+impl ThrownItem {
+    pub const fn new(collector_entity: Entity) -> Self {
+        Self { collector_entity }
+    }
+}
+
+fn reset_thrown_items(
     mut commands: Commands,
     items: Query<(Entity, &LinearVelocity), With<ThrownItem>>,
 ) {

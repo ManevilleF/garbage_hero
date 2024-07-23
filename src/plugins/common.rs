@@ -1,12 +1,22 @@
-use bevy::prelude::*;
+use avian3d::{collision::CollidingEntities, prelude::*};
+use bevy::{log, prelude::*};
+
+use super::{
+    garbage::{Collected, ThrownItem},
+    player::Player,
+};
 
 pub struct CommonPlugin;
 
 impl Plugin for CommonPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<Health>();
+        app.register_type::<Health>()
+            .register_type::<Damage>()
+            .add_systems(Update, (direct_damage, velocity_damage))
+            .add_systems(PostUpdate, handle_death);
     }
 }
+
 #[derive(Debug, Component, Reflect)]
 #[reflect(Component)]
 pub struct Health {
@@ -33,5 +43,84 @@ impl Health {
     pub fn increase_max(&mut self, amount: u16) {
         self.max += amount;
         self.heal(amount);
+    }
+}
+
+#[derive(Debug, Component, Reflect)]
+#[reflect(Component)]
+pub struct Damage(pub u16);
+
+fn direct_damage(damage: Query<(&Damage, &CollidingEntities)>, mut healths: Query<&mut Health>) {
+    for (damage, collision) in &damage {
+        let mut healths = healths.iter_many_mut(&collision.0);
+        while let Some(mut health) = healths.fetch_next() {
+            health.damage(damage.0);
+        }
+    }
+}
+
+fn velocity_damage(
+    mut events: EventReader<CollisionStarted>,
+    mut healths: Query<
+        (
+            Option<&LinearVelocity>,
+            &mut Health,
+            Option<&Collected>,
+            Option<&ThrownItem>,
+        ),
+        (Without<Damage>, With<Collider>),
+    >,
+) {
+    const VEL_TRESHOLD: f32 = 10.0;
+    const DAMAGE_RATIO: f32 = 0.5;
+
+    for CollisionStarted(a, b) in events.read() {
+        let Ok(
+            [(linvel_a, mut health_a, collected_a, thrown_a), (linvel_b, mut health_b, collected_b, thrown_b)],
+        ) = healths.get_many_mut([*a, *b])
+        else {
+            // debug ?
+            continue;
+        };
+        // Skip damage if both objects are collected by the same entity
+        if collected_a
+            .map(|c| c.collector_entity)
+            .or_else(|| thrown_a.map(|t| t.collector_entity))
+            .zip(
+                collected_b
+                    .map(|c| c.collector_entity)
+                    .or_else(|| thrown_b.map(|t| t.collector_entity)),
+            )
+            .map(|(a, b)| a == b)
+            .unwrap_or(false)
+        {
+            continue;
+        }
+        let velocity = linvel_a.map(|v| v.0).unwrap_or(Vec3::ZERO)
+            + linvel_b.map(|v| v.0).unwrap_or(Vec3::ZERO);
+        let length = velocity.length().floor();
+        let damage = ((length - VEL_TRESHOLD) * DAMAGE_RATIO).floor() as u16;
+        if damage > 0 {
+            health_a.damage(damage);
+            health_b.damage(damage);
+        }
+    }
+}
+
+fn handle_death(
+    mut commands: Commands,
+    entities: Query<(Entity, &Health, Option<&Player>), Changed<Health>>,
+) {
+    for (entity, health, player) in &entities {
+        if health.current > 0 {
+            continue;
+        }
+        if let Some(player) = player {
+            // TODO
+            log::info!("Player died: {}", player.id);
+        } else {
+            // TODO: Spawn animation
+            commands.entity(entity).despawn_recursive();
+        }
     }
 }

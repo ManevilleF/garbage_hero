@@ -3,8 +3,8 @@ use std::f32::consts::FRAC_PI_2;
 use crate::plugins::common::Health;
 use crate::ObjectLayer;
 use avian3d::prelude::*;
-use bevy::color::palettes::css::*;
 use bevy::prelude::*;
+use bevy::{color::palettes::css::*, math::vec2};
 use strum::{Display, EnumIter, IntoEnumIterator};
 
 #[derive(Debug, Copy, Clone, Component, EnumIter, Reflect, Display)]
@@ -12,87 +12,94 @@ use strum::{Display, EnumIter, IntoEnumIterator};
 #[repr(u8)]
 #[reflect(Component)]
 pub enum GarbageItem {
-    WoodenCrate,
-    Barrel,
-    ExplosiveBarrel,
-    SmallRock,
-    MediumRock,
-    BigRock,
+    /// 1x1
+    Cube,
+    /// 2x0.5
+    Plank,
+    /// 3x0.5
+    LargePlank,
+    /// 2x1
+    Column,
+    /// 3x1
+    LargeColumn,
+    /// 2x2
     Gear,
-    Pipe,
-    TrafficCone,
-    HayStack,
-    FirePot,
+    /// 2x1
+    Block,
+    /// 2x1
+    Cone,
+    /// 3x1
+    LargeBlock,
+    /// 1x1
+    Ball,
 }
 
 impl GarbageItem {
     pub const fn base_health(self) -> Health {
         match self {
-            Self::WoodenCrate => Health::new(10),
-            Self::Barrel => Health::new(5),
-            Self::ExplosiveBarrel => Health::new(5),
-            Self::SmallRock => Health::new(10),
-            Self::MediumRock => Health::new(20),
-            Self::BigRock => Health::new(30),
-            Self::Gear => Health::new(50),
-            Self::Pipe => Health::new(50),
-            Self::TrafficCone => Health::new(1),
-            Self::HayStack => Health::new(1),
-            Self::FirePot => Health::new(1),
+            Self::Cube => Health::new(10),
+            Self::Plank => Health::new(10),
+            Self::LargePlank => Health::new(15),
+            Self::Column => Health::new(20),
+            Self::LargeColumn => Health::new(30),
+            Self::Gear => Health::new(20),
+            Self::Block => Health::new(20),
+            Self::Cone => Health::new(15),
+            Self::LargeBlock => Health::new(30),
+            Self::Ball => Health::new(20),
         }
     }
 
     pub fn color(self) -> Color {
         match self {
-            Self::WoodenCrate => BURLYWOOD.into(),
-            Self::Barrel => SIENNA.into(),
-            Self::ExplosiveBarrel => FIRE_BRICK.into(),
-            Self::SmallRock => DIM_GRAY.into(),
-            Self::MediumRock => DARK_SLATE_GRAY.into(),
-            Self::BigRock => SLATE_GRAY.into(),
-            Self::Gear => STEEL_BLUE.into(),
-            Self::Pipe => LIGHT_SLATE_GRAY.into(),
-            Self::TrafficCone => ORANGE.into(),
-            Self::HayStack => YELLOW.into(),
-            Self::FirePot => ORANGE_RED.into(),
+            Self::Cube => SANDY_BROWN.into(),
+            Self::Plank => PERU.into(),
+            Self::LargePlank => CHOCOLATE.into(),
+            Self::Column => SIENNA.into(),
+            Self::LargeColumn => SADDLE_BROWN.into(),
+            Self::Gear => GOLDENROD.into(),
+            Self::Block => DARK_GOLDENROD.into(),
+            Self::Cone => DARK_ORANGE.into(),
+            Self::LargeBlock => CORAL.into(),
+            Self::Ball => TOMATO.into(),
         }
     }
 
     pub fn mesh(self) -> Mesh {
         match self {
-            Self::WoodenCrate => Cuboid::from_size(Vec3::ONE).into(),
-            Self::Barrel | Self::ExplosiveBarrel => Cylinder::new(0.5, 1.0).into(),
-            Self::SmallRock => Sphere::new(0.4).mesh().ico(10).unwrap(),
-            Self::MediumRock => Sphere::new(0.8).mesh().ico(12).unwrap(),
-            Self::BigRock => Sphere::new(1.0).mesh().ico(15).unwrap(),
+            Self::Cube => Cuboid::from_size(Vec3::ONE).into(),
+            Self::Plank => Cuboid::new(1.0, 0.5, 2.0).into(),
+            Self::LargePlank => Cuboid::new(1.0, 0.5, 3.0).into(),
+            Self::Column => Cylinder::new(0.5, 2.0).into(),
+            Self::LargeColumn => Cylinder::new(0.5, 3.0).into(),
             Self::Gear => Extrusion::new(Annulus::new(0.8, 1.0), 0.5).into(),
-            Self::Pipe => Cylinder::new(0.5, 1.5).into(),
-            Self::TrafficCone => Cone {
-                radius: 0.5,
-                height: 1.0,
+            Self::Block => Cuboid::new(1.0, 1.0, 2.0).into(),
+            Self::Cone => Cone {
+                radius: 1.0,
+                height: 1.5,
             }
             .into(),
-            Self::HayStack => Cylinder::new(0.75, 1.5).into(),
-            Self::FirePot => Sphere::new(0.5).into(),
+            Self::LargeBlock => Cuboid::new(1.0, 1.0, 3.0).into(),
+            Self::Ball => Sphere::new(1.0).mesh().ico(24).unwrap(),
         }
     }
 
     pub fn collider(self) -> Collider {
         match self {
-            Self::WoodenCrate => Collider::cuboid(1.0, 1.0, 1.0),
-            Self::Barrel | Self::ExplosiveBarrel => Collider::cylinder(0.5, 1.0),
-            Self::SmallRock => Collider::sphere(0.4),
-            Self::MediumRock => Collider::sphere(0.8),
-            Self::BigRock => Collider::sphere(1.0),
+            Self::Cube => Collider::cuboid(1.0, 1.0, 1.0),
+            Self::Plank => Collider::cuboid(1.0, 0.5, 2.0),
+            Self::LargePlank => Collider::cuboid(1.0, 0.5, 3.0),
+            Self::Column => Collider::cylinder(0.5, 2.0),
+            Self::LargeColumn => Collider::cylinder(0.5, 3.0),
             Self::Gear => Collider::compound(vec![(
                 Vec3::ZERO,
                 Quat::from_rotation_x(FRAC_PI_2),
                 Collider::cylinder(1.0, 0.5),
             )]),
-            Self::Pipe => Collider::cylinder(0.5, 1.5),
-            Self::TrafficCone => Collider::cone(0.5, 1.0),
-            Self::HayStack => Collider::cylinder(0.75, 1.5),
-            Self::FirePot => Collider::sphere(0.5),
+            Self::Block => Collider::cuboid(1.0, 1.0, 2.0),
+            Self::Cone => Collider::cone(1.0, 1.5),
+            Self::LargeBlock => Collider::cuboid(1.0, 1.0, 3.0),
+            Self::Ball => Collider::sphere(1.0),
         }
     }
 }
@@ -146,6 +153,8 @@ impl FromWorld for GarbageAssets {
         let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
         let base_material = StandardMaterial {
             fog_enabled: true,
+            metallic: 0.0,
+            perceptual_roughness: 0.8,
             ..default()
         };
         let materials = GarbageItem::iter()

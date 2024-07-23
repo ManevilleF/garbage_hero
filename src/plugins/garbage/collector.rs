@@ -87,13 +87,31 @@ impl Component for Collected {
     }
 }
 
-#[derive(Debug, Component, Reflect)]
+#[derive(Debug, Reflect)]
 #[reflect(Component)]
 pub struct Collector {
     pub enabled: bool,
     distribution: PointDistribution,
     shape: DistributionShape,
     collected: Vec<Entity>,
+}
+
+impl Component for Collector {
+    const STORAGE_TYPE: StorageType = StorageType::Table;
+
+    fn register_component_hooks(hooks: &mut ComponentHooks) {
+        hooks.on_remove(|mut world, entity, _| {
+            let Some(collector) = world.get::<Self>(entity) else {
+                log::error!("on_remove hook triggered for {entity:?} without `Collector`");
+                return;
+            };
+            let collected = collector.collected.clone();
+            let mut commands = world.commands();
+            for entity in collected {
+                commands.entity(entity).remove::<Collected>();
+            }
+        });
+    }
 }
 
 impl Collector {
@@ -181,7 +199,10 @@ impl Collector {
     }
 
     pub fn update_collected_position(
-        mut collected: Query<(&Transform, &mut LinearVelocity), With<Collected>>,
+        mut collected: Query<
+            (&Transform, &mut LinearVelocity),
+            (With<Collected>, Without<ThrownItem>),
+        >,
         mut collectors: Query<(&GlobalTransform, &Self)>,
     ) {
         for (center_tr, collector) in &mut collectors {
@@ -232,10 +253,12 @@ impl Collector {
                 .get::<ColliderMassProperties>(entity)
                 .map(|p| p.mass.0)
                 .unwrap_or(1.0);
+            let collected = world.get::<Collected>(entity).unwrap();
+            let collector_entity = collected.collector_entity;
             let mut entity_cmd = world.entity_mut(entity);
             entity_cmd
                 .insert(ExternalImpulse::new(direction * force * mass))
-                .insert(ThrownItem)
+                .insert(ThrownItem::new(collector_entity))
                 .remove::<Collected>();
         })
     }

@@ -2,6 +2,8 @@ use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
 use strum::IntoEnumIterator;
 
+use crate::Health;
+
 use super::{
     garbage::{spawn_some_garbage, GarbageAssets, GarbageBundle, GarbageItem},
     player::{ActiveSkill, Player, SkillState},
@@ -35,13 +37,19 @@ fn commands_ui(mut commands: Commands, mut context: EguiContexts, assets: Res<Ga
     });
 }
 
-fn players_ui(mut context: EguiContexts, players: Query<(&Player, &ActiveSkill, &SkillState)>) {
+fn players_ui(
+    mut context: EguiContexts,
+    players: Query<(&Player, &ActiveSkill, &SkillState, &Health)>,
+) {
     let ctx = context.ctx_mut();
     egui::Window::new("Players").show(ctx, |ui| {
         egui::Grid::new("Player Grid").show(ui, |ui| {
-            for (player, skill, state) in &players {
+            for (player, skill, state, health) in &players {
                 ui.label(format!("{}", player.id));
                 ui.label(format!("{}", player.controller));
+                ui.end_row();
+                ui.label("Health");
+                ui.label(format!("{}", health.current));
                 ui.end_row();
                 ui.label("Skill");
                 if let Some(skill) = skill.active {

@@ -1,5 +1,5 @@
 use avian3d::prelude::*;
-use bevy::prelude::*;
+use bevy::{color::palettes::css::BURLYWOOD, prelude::*};
 
 use crate::ObjectLayer;
 
@@ -61,7 +61,7 @@ impl FromWorld for MapAssets {
     fn from_world(world: &mut World) -> Self {
         let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
         let default_mat = materials.add(StandardMaterial {
-            base_color: Color::WHITE,
+            base_color: Color::Srgba(BURLYWOOD),
             ..default()
         });
         let mut meshes = world.resource_mut::<Assets<Mesh>>();
