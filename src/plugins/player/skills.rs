@@ -41,9 +41,9 @@ pub enum PlayerSkill {
 impl PlayerSkill {
     pub const fn cooldown(self) -> f32 {
         match self {
-            Self::Collect => 1.0,
-            Self::Shoot => 0.1,
-            Self::Dash => 2.0,
+            Self::Collect => 0.0,
+            Self::Shoot => 0.05,
+            Self::Dash => 1.0,
             Self::Defend => 0.0,
             Self::Burst => 10.0,
         }
@@ -245,7 +245,7 @@ fn dash_skill(
     mut commands: Commands,
     players: Query<(Entity, &PlayerAim, &ActiveSkill, &LinearVelocity), Changed<ActiveSkill>>,
 ) {
-    const DASH_SPEED: f32 = 200.0;
+    const DASH_SPEED: f32 = 300.0;
 
     for (entity, aim, skill, linvel) in &players {
         if skill.active != Some(PlayerSkill::Dash) {

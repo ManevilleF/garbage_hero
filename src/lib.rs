@@ -50,6 +50,7 @@ pub fn run() -> AppExit {
         CommonPlugin,
         CameraPlugin,
         MapPlugin,
+        ParticlesPlugin,
     ));
     #[cfg(feature = "debug")]
     app.add_plugins(DebugPlugin);

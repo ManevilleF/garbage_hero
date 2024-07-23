@@ -87,7 +87,7 @@ impl PlayerBundle {
             name: Name::new(format!("Player {}: {}", player.id, player.controller)),
             health: Health::new(BASE_PLAYER_HEALTH),
             input: PlayerInputBundle::new(player.controller),
-            movement: PlayerMovementBundle::new(75.0, 0.9),
+            movement: PlayerMovementBundle::new(90.0, 0.9),
             skills: PlayerSkillsBundle::new(),
             spatial: Default::default(),
             player,

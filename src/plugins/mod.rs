@@ -7,6 +7,7 @@ mod editor;
 mod garbage;
 mod light;
 mod map;
+mod particles;
 mod player;
 
 pub use camera::{CameraPlugin, GameCamera};
@@ -18,6 +19,7 @@ pub use editor::DebugEditorPlugin;
 pub use garbage::GarbagePlugin;
 pub use light::LightPlugin;
 pub use map::MapPlugin;
+pub use particles::ParticlesPlugin;
 pub use player::PlayerPlugin;
 
 pub mod utils {

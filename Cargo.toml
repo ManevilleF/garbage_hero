@@ -30,6 +30,12 @@ bevy_easings = "0.14"
 # errors
 thiserror = "1.0"
 
+# particles
+[dependencies.bevy_hanabi]
+version = "0.12"
+default-features = false
+features = ["3d"]
+
 [dependencies.bevy]
 version = "0.14"
 

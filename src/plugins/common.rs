@@ -12,8 +12,10 @@ impl Plugin for CommonPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<Health>()
             .register_type::<Damage>()
-            .add_systems(Update, (direct_damage, velocity_damage))
-            .add_systems(PostUpdate, handle_death);
+            .register_type::<Dead>()
+            .add_systems(First, despawn_deads)
+            .add_systems(PreUpdate, handle_death)
+            .add_systems(Update, (direct_damage, velocity_damage));
     }
 }
 
@@ -49,6 +51,10 @@ impl Health {
 #[derive(Debug, Component, Reflect)]
 #[reflect(Component)]
 pub struct Damage(pub u16);
+
+#[derive(Debug, Component, Reflect)]
+#[reflect(Component)]
+pub struct Dead;
 
 fn direct_damage(damage: Query<(&Damage, &CollidingEntities)>, mut healths: Query<&mut Health>) {
     for (damage, collision) in &damage {
@@ -107,14 +113,17 @@ fn velocity_damage(
     }
 }
 
-fn handle_death(
-    mut commands: Commands,
-    entities: Query<(Entity, &Health, Option<&Player>), Changed<Health>>,
-) {
-    for (entity, health, player) in &entities {
+fn handle_death(mut commands: Commands, entities: Query<(Entity, &Health), Changed<Health>>) {
+    for (entity, health) in &entities {
         if health.current > 0 {
             continue;
         }
+        commands.entity(entity).insert(Dead);
+    }
+}
+
+fn despawn_deads(mut commands: Commands, entities: Query<(Entity, Option<&Player>), With<Dead>>) {
+    for (entity, player) in &entities {
         if let Some(player) = player {
             // TODO
             log::info!("Player died: {}", player.id);

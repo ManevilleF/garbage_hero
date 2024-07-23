@@ -1,3 +1,5 @@
+use std::ops::DerefMut;
+
 use super::player::Player;
 use bevy::{
     core_pipeline::{bloom::BloomSettings, tonemapping::Tonemapping},
@@ -74,9 +76,12 @@ pub fn spawn_camera(mut commands: Commands) {
 pub fn follow_players(
     time: Res<Time>,
     players: Query<&GlobalTransform, With<Player>>,
-    mut cameras: Query<(&mut Transform, &mut OrthographicProjection), With<GameCamera>>,
+    mut cameras: Query<(&mut Transform, &mut Projection), With<GameCamera>>,
 ) {
     let Ok((mut cam_tr, mut projection)) = cameras.get_single_mut() else {
+        return;
+    };
+    let Projection::Orthographic(projection) = projection.deref_mut() else {
         return;
     };
     let mut min = Vec2::MAX;
@@ -89,7 +94,7 @@ pub fn follow_players(
     let dt = time.delta_seconds();
     // Translation
     let center = (max + min) / 2.0;
-    let target = Vec3::new(center.x, cam_tr.translation.y, center.y);
+    let target = Vec3::new(center.x, cam_tr.translation.y, center.y - 30.0);
     cam_tr.translation = cam_tr.translation.lerp(target, dt * CAMERA_DECAY_RATE);
     // Projection
     let size = max - min;
@@ -97,7 +102,7 @@ pub fn follow_players(
         .max_element()
         .max(CAM_MIN_SCALE)
         .mul_add(CAM_SCALE_COEF, CAM_SCALE_MARGIN);
-    projection.scale = projection.scale.lerp(target, dt * CAMERA_DECAY_RATE);
+    // projection.scale = projection.scale.lerp(target, dt * CAMERA_DECAY_RATE);
 }
 
 #[cfg(feature = "debug")]
