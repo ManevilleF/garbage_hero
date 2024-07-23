@@ -6,7 +6,7 @@ mod input;
 mod movement;
 mod skills;
 
-use assets::{PlayerAssets, PlayerVisualsBundle};
+use assets::{PlayerAimMarkerBundle, PlayerAssets, PlayerVisualsBundle, PlayerVisualsPlugin};
 pub use input::GameController;
 use input::{PlayerInputBundle, PlayerInputPlugin};
 use movement::{PlayerMovementBundle, PlayerMovementPlugin};
@@ -23,13 +23,16 @@ pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((PlayerInputPlugin, PlayerMovementPlugin, PlayerSkillsPlugin))
-            .init_resource::<PlayerAssets>()
-            .register_type::<PlayerAssets>()
-            .add_event::<PlayerConnected>()
-            .register_type::<Player>()
-            .register_type::<PlayerConnected>()
-            .add_systems(Update, spawn_players);
+        app.add_plugins((
+            PlayerVisualsPlugin,
+            PlayerInputPlugin,
+            PlayerMovementPlugin,
+            PlayerSkillsPlugin,
+        ))
+        .add_event::<PlayerConnected>()
+        .register_type::<Player>()
+        .register_type::<PlayerConnected>()
+        .add_systems(Update, spawn_players);
     }
 }
 
@@ -49,11 +52,17 @@ impl Player {
             let visuals_bundle = PlayerVisualsBundle::new(self.id as usize, assets);
             let mut bundle = PlayerBundle::new(self);
             bundle.spatial.transform.translation = position;
-            world.spawn(bundle).with_children(|b| {
-                let collector_bundle = CollectorBundle::new(3.0, 1.0);
-                b.spawn(collector_bundle);
-                b.spawn(visuals_bundle);
-            });
+            let entity = world
+                .spawn(bundle)
+                .with_children(|b| {
+                    let collector_bundle = CollectorBundle::new(3.0, 1.0);
+                    b.spawn(collector_bundle);
+                    b.spawn(visuals_bundle);
+                })
+                .id();
+            let assets = world.resource::<PlayerAssets>();
+            let marker_bundle = PlayerAimMarkerBundle::new(self.id as usize, entity, assets);
+            world.spawn(marker_bundle);
         }
     }
 }
