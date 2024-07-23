@@ -6,7 +6,7 @@ edition = "2021"
 [features]
 default = []
 debug_physics = ["avian3d/debug-plugin"]
-debug = ["bevy_egui", "bevy-inspector-egui"]
+debug = ["bevy_egui", "bevy-inspector-egui", "bevy/file_watcher"]
 editor = [
     "debug",
     "leafwing-input-manager/egui",
@@ -27,6 +27,8 @@ leafwing-input-manager = "0.14"
 rand = "0.8"
 # Animation
 bevy_easings = "0.14"
+# errors
+thiserror = "1.0"
 
 [dependencies.bevy]
 version = "0.14"

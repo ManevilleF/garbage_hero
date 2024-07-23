@@ -18,15 +18,9 @@ use bevy_mod_picking::prelude::*;
 use egui_dock::{DockArea, DockState, NodeIndex, Style};
 use std::any::TypeId;
 use std::{fs::File, io::Write};
-use strum::IntoEnumIterator;
 use transform_gizmo_bevy::prelude::*;
 
 use crate::GameCamera;
-
-use super::{
-    garbage::{spawn_some_garbage, GarbageAssets, GarbageBundle, GarbageItem},
-    map::{MapAssets, MapElementBundle},
-};
 
 pub struct DebugEditorPlugin;
 

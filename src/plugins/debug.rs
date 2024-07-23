@@ -1,11 +1,17 @@
 use bevy::prelude::*;
-use bevy_egui::{egui, EguiContexts};
+use bevy_egui::{
+    egui::{self, Widget},
+    EguiContexts,
+};
 use strum::IntoEnumIterator;
 
 use crate::Health;
 
 use super::{
-    garbage::{spawn_some_garbage, GarbageAssets, GarbageBundle, GarbageItem},
+    garbage::{
+        spawn_builds, spawn_some_garbage, AvailableItemBuilds, GarbageAssets, GarbageBundle,
+        GarbageItem, SpawnBuild,
+    },
     player::{ActiveSkill, Player, SkillState},
 };
 
@@ -18,9 +24,17 @@ impl Plugin for DebugPlugin {
     }
 }
 
-fn commands_ui(mut commands: Commands, mut context: EguiContexts, assets: Res<GarbageAssets>) {
+fn commands_ui(
+    mut commands: Commands,
+    mut context: EguiContexts,
+    assets: Res<GarbageAssets>,
+    builds: Res<AvailableItemBuilds>,
+    mut pos: Local<Vec3>,
+    mut rot: Local<f32>,
+) {
     let ctx = context.ctx_mut();
     egui::Window::new("Commands").show(ctx, |ui| {
+        ui.heading("Garbage");
         egui::ComboBox::from_label("Spawn Garbage Item")
             .selected_text("Spawn Garbage")
             .show_ui(ui, |ui| {
@@ -33,6 +47,27 @@ fn commands_ui(mut commands: Commands, mut context: EguiContexts, assets: Res<Ga
         if ui.button("Spawn 50 garbage items").clicked() {
             let shape = Cuboid::new(50.0, 5.0, 50.0);
             commands.add(spawn_some_garbage(50, Vec3::Y * 5.0, shape));
+        }
+        ui.heading("Builds");
+        ui.horizontal(|ui| {
+            ui.label("Position");
+            egui::DragValue::new(&mut pos.x).ui(ui);
+            egui::DragValue::new(&mut pos.y).ui(ui);
+            egui::DragValue::new(&mut pos.z).ui(ui);
+        });
+        ui.drag_angle(&mut rot);
+        for (label, handle) in builds.iter() {
+            if ui.button(label).clicked() {
+                commands.add(SpawnBuild {
+                    handle: handle.clone_weak(),
+                    position: *pos,
+                    angle: *rot,
+                });
+            }
+        }
+
+        if ui.button("Spawn 20 builds").clicked() {
+            commands.add(spawn_builds(20, *pos, 50.0));
         }
     });
 }

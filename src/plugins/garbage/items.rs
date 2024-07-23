@@ -3,8 +3,8 @@ use std::f32::consts::FRAC_PI_2;
 use crate::plugins::common::Health;
 use crate::ObjectLayer;
 use avian3d::prelude::*;
+use bevy::color::palettes::css::*;
 use bevy::prelude::*;
-use bevy::{color::palettes::css::*, math::vec2};
 use strum::{Display, EnumIter, IntoEnumIterator};
 
 #[derive(Debug, Copy, Clone, Component, EnumIter, Reflect, Display)]
@@ -68,18 +68,18 @@ impl GarbageItem {
     pub fn mesh(self) -> Mesh {
         match self {
             Self::Cube => Cuboid::from_size(Vec3::ONE).into(),
-            Self::Plank => Cuboid::new(1.0, 0.5, 2.0).into(),
-            Self::LargePlank => Cuboid::new(1.0, 0.5, 3.0).into(),
+            Self::Plank => Cuboid::new(2.0, 0.5, 1.0).into(),
+            Self::LargePlank => Cuboid::new(3.0, 0.5, 1.0).into(),
             Self::Column => Cylinder::new(0.5, 2.0).into(),
             Self::LargeColumn => Cylinder::new(0.5, 3.0).into(),
             Self::Gear => Extrusion::new(Annulus::new(0.8, 1.0), 0.5).into(),
-            Self::Block => Cuboid::new(1.0, 1.0, 2.0).into(),
             Self::Cone => Cone {
                 radius: 1.0,
                 height: 1.5,
             }
             .into(),
-            Self::LargeBlock => Cuboid::new(1.0, 1.0, 3.0).into(),
+            Self::Block => Cuboid::new(1.0, 2.0, 1.0).into(),
+            Self::LargeBlock => Cuboid::new(1.0, 3.0, 1.0).into(),
             Self::Ball => Sphere::new(1.0).mesh().ico(24).unwrap(),
         }
     }
@@ -87,8 +87,8 @@ impl GarbageItem {
     pub fn collider(self) -> Collider {
         match self {
             Self::Cube => Collider::cuboid(1.0, 1.0, 1.0),
-            Self::Plank => Collider::cuboid(1.0, 0.5, 2.0),
-            Self::LargePlank => Collider::cuboid(1.0, 0.5, 3.0),
+            Self::Plank => Collider::cuboid(2.0, 0.5, 1.0),
+            Self::LargePlank => Collider::cuboid(3.0, 0.5, 1.0),
             Self::Column => Collider::cylinder(0.5, 2.0),
             Self::LargeColumn => Collider::cylinder(0.5, 3.0),
             Self::Gear => Collider::compound(vec![(
@@ -96,9 +96,9 @@ impl GarbageItem {
                 Quat::from_rotation_x(FRAC_PI_2),
                 Collider::cylinder(1.0, 0.5),
             )]),
-            Self::Block => Collider::cuboid(1.0, 1.0, 2.0),
             Self::Cone => Collider::cone(1.0, 1.5),
-            Self::LargeBlock => Collider::cuboid(1.0, 1.0, 3.0),
+            Self::Block => Collider::cuboid(1.0, 2.0, 1.0),
+            Self::LargeBlock => Collider::cuboid(1.0, 3.0, 1.0),
             Self::Ball => Collider::sphere(1.0),
         }
     }
