@@ -50,13 +50,13 @@ impl PlayerSkill {
     }
 }
 
-#[derive(Debug, Reflect, Component)]
+#[derive(Debug, Reflect, Component, Clone)]
 #[reflect(Component)]
 pub struct SkillState {
     pub cooldowns: HashMap<PlayerSkill, f32>,
 }
 
-#[derive(Debug, Reflect, Component, Default)]
+#[derive(Debug, Reflect, Component, Default, Clone)]
 #[reflect(Component)]
 pub struct ActiveSkill {
     pub active: Option<PlayerSkill>,

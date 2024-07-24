@@ -1,7 +1,7 @@
-use bevy::prelude::*;
+use bevy::{asset::AssetEvents, prelude::*, reflect::Typed, utils::HashMap, window::PrimaryWindow};
 use bevy_egui::{
-    egui::{self, Widget},
-    EguiContexts,
+    egui::{self, ColorImage, Widget},
+    EguiContext, EguiContexts,
 };
 use strum::IntoEnumIterator;
 
@@ -13,14 +13,19 @@ use super::{
         GarbageItem, SpawnBuild,
     },
     player::{ActiveSkill, GameController, Player, PlayerConnected, SkillState},
+    ui::input_icons::InputMapIcons,
 };
 
 pub struct DebugPlugin;
 
 impl Plugin for DebugPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(bevy_egui::EguiPlugin)
-            .add_systems(Update, (commands_ui, players_ui));
+        app.add_plugins((
+            bevy_egui::EguiPlugin,
+            bevy_inspector_egui::DefaultInspectorConfigPlugin,
+        ))
+        .init_resource::<ImageToEgui>()
+        .add_systems(Update, (update_images, commands_ui, players_ui));
     }
 }
 
@@ -35,7 +40,7 @@ fn commands_ui(
     let ctx = context.ctx_mut();
     egui::Window::new("Commands").show(ctx, |ui| {
         ui.heading("Garbage");
-        egui::ComboBox::from_label("Spawn Garbage Item")
+        egui::ComboBox::from_id_source("Spawn Garbage Item")
             .selected_text("Spawn Garbage")
             .show_ui(ui, |ui| {
                 for item in GarbageItem::iter() {
@@ -80,16 +85,33 @@ fn commands_ui(
     });
 }
 
+#[derive(Resource, Default)]
+struct ImageToEgui(HashMap<Handle<Image>, egui::TextureId>);
+
+fn update_images(
+    new_icons: Query<&InputMapIcons, Added<InputMapIcons>>,
+    mut images: ResMut<ImageToEgui>,
+    mut context: EguiContexts,
+) {
+    for icons in &new_icons {
+        for handle in icons.values() {
+            let texture = context.add_image(handle.clone_weak());
+            images.0.insert(handle.clone_weak(), texture);
+        }
+    }
+}
+
 fn players_ui(
     mut player_connected_evw: EventWriter<PlayerConnected>,
     mut context: EguiContexts,
-    players: Query<(&Player, &ActiveSkill, &SkillState, &Health)>,
+    textures: Res<ImageToEgui>,
+    players: Query<(&Player, &ActiveSkill, &SkillState, &Health, &InputMapIcons)>,
 ) {
     let ctx = context.ctx_mut();
     let mut player_count = 0_usize;
     egui::Window::new("Players").show(ctx, |ui| {
-        egui::Grid::new("Player Grid").show(ui, |ui| {
-            for (player, skill, state, health) in &players {
+        for (player, skill, state, health, icons) in &players {
+            egui::Grid::new(format!("Player {} Grid", player.id)).show(ui, |ui| {
                 ui.label(format!("{}", player.id));
                 ui.label(format!("{}", player.controller));
                 ui.end_row();
@@ -101,17 +123,37 @@ fn players_ui(
                     ui.label(format!("{}", skill));
                 }
                 ui.end_row();
-                ui.label("Skills");
-                ui.end_row();
-                for (skill, cooldown) in &state.cooldowns {
-                    ui.label(format!("{}", skill));
-                    ui.label(format!("{}", *cooldown));
-                    ui.end_row();
-                }
-                player_count += 1;
-            }
-            ui.spacing();
-        });
+            });
+            egui::CollapsingHeader::new("Skills")
+                .id_source(format!("Skills {}", player.id))
+                .show(ui, |ui| {
+                    egui::Grid::new("cooldowns").show(ui, |ui| {
+                        for (skill, cooldown) in &state.cooldowns {
+                            ui.label(format!("{}", skill));
+                            ui.label(format!("{}", *cooldown));
+                            ui.end_row();
+                        }
+                    });
+                });
+            egui::CollapsingHeader::new("Icons")
+                .id_source(format!("Icons {}", player.id))
+                .show(ui, |ui| {
+                    egui::Grid::new("icons").show(ui, |ui| {
+                        for (input, icon) in icons.iter() {
+                            ui.label(format!("{input:?}"));
+                            if let Some(texture) = textures.0.get(icon) {
+                                ui.add(egui::widgets::Image::new(egui::load::SizedTexture::new(
+                                    *texture,
+                                    [48.0, 48.0],
+                                )));
+                            }
+                            ui.end_row();
+                        }
+                    });
+                });
+            player_count += 1;
+        }
+        ui.spacing();
         if ui.button("Spawn fake player").clicked() {
             player_connected_evw.send(PlayerConnected(Player {
                 id: player_count as u8,

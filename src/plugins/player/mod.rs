@@ -12,7 +12,7 @@ mod movement;
 mod skills;
 
 use assets::{PlayerAimMarkerBundle, PlayerAssets, PlayerVisualsBundle, PlayerVisualsPlugin};
-pub use input::GameController;
+pub use input::{GameController, PlayerInputAction};
 use input::{PlayerInputBundle, PlayerInputPlugin};
 use movement::{PlayerMovementBundle, PlayerMovementPlugin};
 pub use skills::{ActiveSkill, PlayerSkill, SkillState};
@@ -62,14 +62,14 @@ pub struct PlayerBundle {
 }
 
 impl PlayerBundle {
-    pub fn new(player: Player) -> Self {
+    pub fn new(player: Player, server: &AssetServer) -> Self {
         if player.id >= MAX_PLAYERS {
             panic!("{MAX_PLAYERS} players supported");
         }
         Self {
             name: Name::new(format!("Player {}: {}", player.id, player.controller)),
             health: Health::new(BASE_PLAYER_HEALTH),
-            input: PlayerInputBundle::new(player.controller),
+            input: PlayerInputBundle::new(player.controller, server),
             movement: PlayerMovementBundle::new(90.0, 0.9),
             skills: PlayerSkillsBundle::new(),
             spatial: Default::default(),
@@ -84,6 +84,7 @@ pub fn spawn_players(
     mut connected_evr: EventReader<PlayerConnected>,
     assets: Res<PlayerAssets>,
     particles: Res<ParticleConfig>,
+    asset_server: Res<AssetServer>,
 ) {
     let position = players
         .iter()
@@ -93,7 +94,7 @@ pub fn spawn_players(
     for PlayerConnected(player) in connected_evr.read() {
         let color = assets.colors[player.id as usize];
         // Offset
-        let mut bundle = PlayerBundle::new(*player);
+        let mut bundle = PlayerBundle::new(*player, &asset_server);
         bundle.spatial.transform.translation = position;
 
         let root_entity = commands

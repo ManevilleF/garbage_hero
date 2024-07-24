@@ -12,7 +12,6 @@ use bevy_inspector_egui::bevy_inspector::hierarchy::{hierarchy_ui, SelectedEntit
 use bevy_inspector_egui::bevy_inspector::{
     self, ui_for_entities_shared_components, ui_for_entity_with_children,
 };
-use bevy_inspector_egui::DefaultInspectorConfigPlugin;
 use bevy_mod_picking::backends::egui::EguiPointer;
 use bevy_mod_picking::prelude::*;
 use egui_dock::{DockArea, DockState, NodeIndex, Style};
@@ -27,7 +26,6 @@ pub struct DebugEditorPlugin;
 impl Plugin for DebugEditorPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(bevy_framepace::FramepacePlugin) // reduces input lag
-            .add_plugins(DefaultInspectorConfigPlugin)
             .add_plugins(bevy_mod_picking::DefaultPickingPlugins)
             .add_plugins(TransformGizmoPlugin)
             .insert_resource(UiState::new())
@@ -45,7 +43,6 @@ impl Plugin for DebugEditorPlugin {
                 Update,
                 (set_gizmo_mode, auto_add_raycast_target, handle_pick_events),
             )
-            .register_type::<Option<Handle<Image>>>()
             .register_type::<AlphaMode>();
     }
 }

@@ -1,3 +1,5 @@
+use crate::plugins::ui::input_icons::InputMapIcons;
+
 use super::{skills::PlayerSkill, Player, PlayerConnected};
 use bevy::{
     input::{
@@ -42,12 +44,16 @@ impl Display for GameController {
 #[derive(Bundle)]
 pub struct PlayerInputBundle {
     pub input: InputManagerBundle<PlayerInputAction>,
+    pub icons: InputMapIcons,
 }
 
 impl PlayerInputBundle {
-    pub fn new(controller: GameController) -> Self {
+    pub fn new(controller: GameController, server: &AssetServer) -> Self {
+        let map = PlayerInputAction::input_map(controller);
+        let icons = InputMapIcons::new(&map, server);
         Self {
-            input: InputManagerBundle::with_map(PlayerInputAction::input_map(controller)),
+            input: InputManagerBundle::with_map(map),
+            icons,
         }
     }
 }
@@ -106,7 +112,7 @@ pub fn handle_game_input(
 ) {
     let players: HashMap<GameController, u8> =
         players.iter().map(|p| (p.controller, p.id)).collect();
-    let new_player_id = || players.values().max().copied().unwrap_or(0);
+    let new_player_id = || players.values().max().copied().map(|v| v + 1).unwrap_or(0);
     for event in gamepad_evr.read() {
         let controller = GameController::Gamepad(event.gamepad);
         match &event.connection {

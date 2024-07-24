@@ -19,7 +19,7 @@ impl Plugin for CommonPlugin {
     }
 }
 
-#[derive(Debug, Component, Reflect)]
+#[derive(Debug, Component, Clone, Copy, Reflect)]
 #[reflect(Component)]
 pub struct Health {
     pub current: u16,
