@@ -9,6 +9,7 @@ mod light;
 mod map;
 mod particles;
 mod player;
+mod ui;
 
 pub use camera::{CameraPlugin, GameCamera};
 pub use common::*;
