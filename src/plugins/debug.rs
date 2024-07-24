@@ -12,7 +12,7 @@ use super::{
         spawn_builds, spawn_some_garbage, AvailableItemBuilds, GarbageAssets, GarbageBundle,
         GarbageItem, SpawnBuild,
     },
-    player::{ActiveSkill, Player, SkillState},
+    player::{ActiveSkill, GameController, Player, PlayerConnected, SkillState},
 };
 
 pub struct DebugPlugin;
@@ -56,27 +56,37 @@ fn commands_ui(
             egui::DragValue::new(&mut pos.z).ui(ui);
         });
         ui.drag_angle(&mut rot);
-        for (label, handle) in builds.iter() {
-            if ui.button(label).clicked() {
-                commands.add(SpawnBuild {
-                    handle: handle.clone_weak(),
-                    position: *pos,
-                    angle: *rot,
-                });
-            }
+        egui::ComboBox::from_label("Spawn Item Build")
+            .selected_text("Spawn Build")
+            .show_ui(ui, |ui| {
+                for (label, handle) in builds.iter() {
+                    if ui.button(label).clicked() {
+                        commands.add(SpawnBuild {
+                            handle: handle.clone_weak(),
+                            position: *pos,
+                            angle: *rot,
+                        });
+                    }
+                }
+            });
+
+        if ui.button("Spawn 10 builds").clicked() {
+            commands.add(spawn_builds(10, *pos, 10.0));
         }
 
-        if ui.button("Spawn 20 builds").clicked() {
-            commands.add(spawn_builds(20, *pos, 50.0));
+        if ui.button("Spawn 50 builds").clicked() {
+            commands.add(spawn_builds(50, *pos, 50.0));
         }
     });
 }
 
 fn players_ui(
+    mut player_connected_evw: EventWriter<PlayerConnected>,
     mut context: EguiContexts,
     players: Query<(&Player, &ActiveSkill, &SkillState, &Health)>,
 ) {
     let ctx = context.ctx_mut();
+    let mut player_count = 0_usize;
     egui::Window::new("Players").show(ctx, |ui| {
         egui::Grid::new("Player Grid").show(ui, |ui| {
             for (player, skill, state, health) in &players {
@@ -98,8 +108,15 @@ fn players_ui(
                     ui.label(format!("{}", *cooldown));
                     ui.end_row();
                 }
+                player_count += 1;
             }
             ui.spacing();
         });
+        if ui.button("Spawn fake player").clicked() {
+            player_connected_evw.send(PlayerConnected(Player {
+                id: player_count as u8,
+                controller: GameController::Gamepad(Gamepad { id: player_count }),
+            }));
+        }
     });
 }

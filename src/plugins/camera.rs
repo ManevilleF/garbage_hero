@@ -10,10 +10,9 @@ use bevy::{
     window::PrimaryWindow,
 };
 
-const CAM_SCALE_COEF: f32 = 1.0;
-const CAM_SCALE_MARGIN: f32 = 1.0;
+const CAM_SCALE_COEF: f32 = 0.001;
 const CAM_MIN_SCALE: f32 = 0.05;
-const CAM_Y_OFFSET: f32 = 30.0;
+const CAM_OFFSET: Vec3 = Vec3::new(0.0, 30.0, -30.0);
 /// How quickly should the camera snap to the desired location.
 const CAMERA_DECAY_RATE: f32 = 2.;
 
@@ -53,12 +52,11 @@ impl<'w, 's> CameraParams<'w, 's> {
 pub fn spawn_camera(mut commands: Commands) {
     commands.spawn((
         Camera3dBundle {
-            transform: Transform::from_xyz(0.0, CAM_Y_OFFSET, -30.0)
-                .looking_at(Vec3::ZERO, Dir3::Y),
+            transform: Transform::from_translation(CAM_OFFSET).looking_at(Vec3::ZERO, Dir3::Y),
             projection: Projection::Orthographic(OrthographicProjection {
                 scaling_mode: ScalingMode::WindowSize(1.0),
                 scale: CAM_MIN_SCALE,
-                near: -10.0,
+                near: -100.0,
                 ..default()
             }),
             tonemapping: Tonemapping::AcesFitted,
@@ -94,15 +92,12 @@ pub fn follow_players(
     let dt = time.delta_seconds();
     // Translation
     let center = (max + min) / 2.0;
-    let target = Vec3::new(center.x, cam_tr.translation.y, center.y - 30.0);
+    let target = Vec3::new(center.x, 0.0, center.y) + CAM_OFFSET;
     cam_tr.translation = cam_tr.translation.lerp(target, dt * CAMERA_DECAY_RATE);
     // Projection
     let size = max - min;
-    let target = size
-        .max_element()
-        .max(CAM_MIN_SCALE)
-        .mul_add(CAM_SCALE_COEF, CAM_SCALE_MARGIN);
-    // projection.scale = projection.scale.lerp(target, dt * CAMERA_DECAY_RATE);
+    let target = (size.max_element() * CAM_SCALE_COEF).max(CAM_MIN_SCALE);
+    projection.scale = projection.scale.lerp(target, dt * CAMERA_DECAY_RATE);
 }
 
 #[cfg(feature = "debug")]

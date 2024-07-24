@@ -48,6 +48,8 @@ impl Component for Collected {
                     return;
                 };
                 if !collector.insert(entity, dir) {
+                    let mut commands = world.commands();
+                    commands.entity(entity).remove::<Self>();
                     return;
                 };
                 let Some(mut layer) = world.get_mut::<CollisionLayers>(entity) else {
