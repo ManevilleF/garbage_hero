@@ -196,8 +196,11 @@ impl Collector {
             let collector_entity = collected.collector_entity;
             let mut entity_cmd = world.entity_mut(entity);
             entity_cmd
-                .insert(ExternalImpulse::new(direction * force * mass))
-                .insert(ThrownItem::new(collector_entity))
+                .insert((
+                    LinearVelocity::default(),
+                    ExternalImpulse::new(direction * force * mass),
+                    ThrownItem::new(collector_entity),
+                ))
                 .remove::<Collected>();
         })
     }

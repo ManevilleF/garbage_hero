@@ -78,7 +78,7 @@ fn velocity_damage(
     >,
 ) {
     const VEL_TRESHOLD: f32 = 10.0;
-    const DAMAGE_RATIO: f32 = 0.2;
+    const DAMAGE_RATIO: f32 = 0.1;
 
     for CollisionStarted(a, b) in events.read() {
         let Ok(

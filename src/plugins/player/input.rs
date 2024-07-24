@@ -79,7 +79,7 @@ impl PlayerInputAction {
             GameController::KeyBoard => {
                 map.insert(Move, VirtualDPad::arrow_keys())
                     .insert(Move, VirtualDPad::wasd())
-                    .insert(Skill(Collect), KeyCode::KeyE)
+                    .insert_one_to_many(Skill(Collect), [KeyCode::ShiftLeft, KeyCode::ShiftRight])
                     .insert(Skill(Shoot), MouseButton::Left)
                     .insert(Skill(Defend), MouseButton::Right)
                     .insert(Skill(Dash), KeyCode::Space)

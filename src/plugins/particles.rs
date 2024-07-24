@@ -148,7 +148,7 @@ impl ParticleConfig {
 
     fn destruction_effect(texture: Handle<Image>) -> EffectAsset {
         // Set `spawn_immediately` to false to spawn on command with Spawner::reset()
-        let spawner = Spawner::once(50.0.into(), false);
+        let spawner = Spawner::once(70.0.into(), false);
         let mut size_gradient = Gradient::new();
         size_gradient.add_key(0.0, Vec2::splat(0.05)); // Start size
         size_gradient.add_key(0.1, Vec2::splat(0.8)); // Start size
@@ -174,7 +174,7 @@ impl ParticleConfig {
         };
         let init_age = SetAttributeModifier::new(Attribute::AGE, writer.lit(0.0).expr());
         // Give a bit of variation by randomizing the lifetime per particle
-        let lifetime = writer.lit(0.5).uniform(writer.lit(1.5)).expr();
+        let lifetime = writer.lit(1.0).uniform(writer.lit(1.5)).expr();
         let init_lifetime = SetAttributeModifier::new(Attribute::LIFETIME, lifetime);
         let update_size = SizeOverLifetimeModifier {
             gradient: size_gradient,
