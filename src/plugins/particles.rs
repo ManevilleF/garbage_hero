@@ -12,30 +12,53 @@ impl Plugin for ParticlesPlugin {
         app.add_plugins(HanabiPlugin)
             .register_type::<ParticleConfig>()
             .init_resource::<ParticleConfig>()
-            .add_systems(Update, trigger_destroy_particles);
+            .register_type::<DestructionInstructions>()
+            .init_resource::<DestructionInstructions>()
+            .add_systems(
+                Update,
+                (trigger_destroy_particles, apply_destruction_particles),
+            );
 
         #[cfg(feature = "debug")]
         app.add_systems(PostUpdate, draw_gizmos);
     }
 }
 
+/// Differed particle instructions to support same frame triggers
+#[derive(Resource, Default, Reflect)]
+#[reflect(Resource)]
+struct DestructionInstructions {
+    /// Position, color as a u32
+    data: Vec<(Vec3, u32)>,
+}
+
 fn trigger_destroy_particles(
     targets: Query<(&GlobalTransform, &GarbageItem), Added<Dead>>,
+    mut instructions: ResMut<DestructionInstructions>,
+) {
+    for (gtr, item) in &targets {
+        let [r, g, b, a] = item.color().to_srgba().to_u8_array();
+        let color = (a as u32) << 24 | (b as u32) << 16 | (g as u32) << 8 | (r as u32);
+        instructions.data.push((gtr.translation(), color));
+    }
+}
+
+fn apply_destruction_particles(
+    mut instructions: ResMut<DestructionInstructions>,
     emitters: Res<ParticleConfig>,
     mut particles: Query<(&mut EffectProperties, &mut EffectSpawner, &mut Transform)>,
 ) {
+    let Some((pos, color)) = instructions.data.pop() else {
+        return;
+    };
     let Ok((mut properties, mut spawner, mut particle_tr)) =
         particles.get_mut(emitters.destruction_emitter)
     else {
         return;
     };
-    for (gtr, item) in &targets {
-        let [r, g, b, a] = item.color().to_srgba().to_u8_array();
-        let color = (a as u32) << 24 | (b as u32) << 16 | (g as u32) << 8 | (r as u32);
-        particle_tr.translation = gtr.translation();
-        properties.set("color", color.into());
-        spawner.reset();
-    }
+    particle_tr.translation = pos;
+    properties.set("color", color.into());
+    spawner.reset();
 }
 
 #[derive(Resource, Reflect)]

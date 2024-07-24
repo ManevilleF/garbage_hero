@@ -950,6 +950,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_mod_outline"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e87cf62d49e32614183a7650b179dee34df76d8e3269661747f83fb0c380e96a"
+dependencies = [
+ "bevy",
+ "bitfield",
+ "nonmax",
+ "thiserror",
+ "wgpu-types",
+]
+
+[[package]]
 name = "bevy_mod_picking"
 version = "0.20.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1533,6 +1546,12 @@ name = "bit-vec"
 version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "349f9b6a179ed607305526ca489b34ad0a41aed5f7980fa90eb03160b69598fb"
+
+[[package]]
+name = "bitfield"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c821a6e124197eb56d907ccc2188eab1038fb919c914f47976e64dd8dbc855d1"
 
 [[package]]
 name = "bitflags"
@@ -2455,6 +2474,7 @@ dependencies = [
  "bevy_egui",
  "bevy_framepace",
  "bevy_hanabi",
+ "bevy_mod_outline",
  "bevy_mod_picking",
  "egui_dock",
  "leafwing-input-manager",

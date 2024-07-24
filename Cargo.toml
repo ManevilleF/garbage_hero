@@ -30,6 +30,10 @@ bevy_easings = "0.14"
 # errors
 thiserror = "1.0"
 
+[dependencies.bevy_mod_outline]
+version = "0.8"
+default-features = false
+
 # particles
 [dependencies.bevy_hanabi]
 version = "0.12"

@@ -2,6 +2,9 @@
 #![allow(dead_code, clippy::type_complexity)]
 use avian3d::{prelude::PhysicsLayer, PhysicsPlugins};
 use bevy::{core_pipeline::experimental::taa::TemporalAntiAliasPlugin, prelude::*};
+use bevy_mod_outline::{
+    AsyncSceneInheritOutlinePlugin, AutoGenerateOutlineNormalsPlugin, OutlinePlugin,
+};
 
 mod plugins;
 
@@ -41,8 +44,15 @@ pub fn run() -> AppExit {
         ..default()
     }))
     .init_state::<GameState>()
-    .add_plugins(PhysicsPlugins::default())
-    .add_plugins(TemporalAntiAliasPlugin)
+    // Built in
+    .add_plugins((
+        PhysicsPlugins::default(),
+        OutlinePlugin,
+        AsyncSceneInheritOutlinePlugin,
+        AutoGenerateOutlineNormalsPlugin,
+        TemporalAntiAliasPlugin,
+    ))
+    // Custom
     .add_plugins((
         LightPlugin,
         GarbagePlugin,

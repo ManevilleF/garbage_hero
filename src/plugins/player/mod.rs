@@ -49,13 +49,14 @@ impl Player {
     pub fn spawn(self, position: Vec3) -> impl FnOnce(&mut World) {
         move |world| {
             let assets = world.resource::<PlayerAssets>();
+            let color = assets.colors[self.id as usize];
             let visuals_bundle = PlayerVisualsBundle::new(self.id as usize, assets);
             let mut bundle = PlayerBundle::new(self);
             bundle.spatial.transform.translation = position;
             let entity = world
                 .spawn(bundle)
                 .with_children(|b| {
-                    let collector_bundle = CollectorBundle::new(3.0, 1.0);
+                    let collector_bundle = CollectorBundle::new(3.0, 1.0, color);
                     b.spawn(collector_bundle);
                     b.spawn(visuals_bundle);
                 })

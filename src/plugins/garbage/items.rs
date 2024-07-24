@@ -5,6 +5,7 @@ use crate::ObjectLayer;
 use avian3d::prelude::*;
 use bevy::color::palettes::css::*;
 use bevy::prelude::*;
+use bevy_mod_outline::OutlineMeshExt;
 use strum::{Display, EnumIter, IntoEnumIterator};
 
 #[derive(Debug, Copy, Clone, Component, EnumIter, Reflect, Display)]

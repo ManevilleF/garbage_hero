@@ -1,13 +1,21 @@
 use std::f32::consts::PI;
 
 use avian3d::prelude::LinearVelocity;
-use bevy::{ecs::world::Command, prelude::*};
+use bevy::{
+    ecs::{
+        component::{ComponentHooks, StorageType},
+        world::Command,
+    },
+    log,
+    prelude::*,
+};
 
 mod builds;
 mod collector;
 mod distribution;
 mod items;
 
+use bevy_mod_outline::{OutlineBundle, OutlineVolume};
 pub use builds::{AvailableItemBuilds, ItemBuild, SpawnBuild};
 pub use collector::{Collected, Collector, CollectorBundle};
 pub use distribution::DistributionShape;
@@ -45,10 +53,39 @@ impl Plugin for GarbagePlugin {
     }
 }
 
-#[derive(Debug, Reflect, Component)]
+#[derive(Debug, Reflect)]
 #[reflect(Component)]
 pub struct ThrownItem {
     pub collector_entity: Entity,
+}
+
+impl Component for ThrownItem {
+    const STORAGE_TYPE: StorageType = StorageType::Table;
+
+    fn register_component_hooks(hooks: &mut ComponentHooks) {
+        hooks
+            .on_add(|mut world, entity, _| {
+                let thrown = world.get::<Self>(entity).unwrap();
+                let Some(collector) = world.get::<Collector>(thrown.collector_entity) else {
+                    log::error!("Thrown entity {entity:?} collector does not exist");
+                    return;
+                };
+                let color = collector.color;
+                let mut commands = world.commands();
+                commands.entity(entity).insert(OutlineBundle {
+                    outline: OutlineVolume {
+                        visible: true,
+                        width: 3.0,
+                        colour: color,
+                    },
+                    ..default()
+                });
+            })
+            .on_remove(|mut world, entity, _| {
+                let mut commands = world.commands();
+                commands.entity(entity).remove::<OutlineBundle>();
+            });
+    }
 }
 
 impl ThrownItem {

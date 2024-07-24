@@ -1,13 +1,11 @@
+use super::{DistributionShape, GarbageItem, PointDistribution, ThrownItem};
+use crate::ObjectLayer;
 use avian3d::prelude::*;
 use bevy::{
     ecs::component::{ComponentHooks, StorageType},
     log,
     prelude::*,
 };
-
-use crate::ObjectLayer;
-
-use super::{DistributionShape, GarbageItem, PointDistribution, ThrownItem};
 
 #[derive(Debug, Reflect)]
 #[reflect(Component)]
@@ -91,6 +89,7 @@ impl Component for Collected {
 #[reflect(Component)]
 pub struct Collector {
     pub enabled: bool,
+    pub color: Color,
     distribution: PointDistribution,
     shape: DistributionShape,
     collected: Vec<Entity>,
@@ -120,9 +119,10 @@ impl Collector {
     const MAX_ITEMS: usize = 75;
     const COLLECTOR_RADIUS_COEF: f32 = 1.2;
 
-    pub fn new(min_radius: f32, max_distance: f32) -> Self {
+    pub fn new(min_radius: f32, max_distance: f32, color: Color) -> Self {
         Self {
             enabled: false,
+            color,
             distribution: PointDistribution::new(min_radius, max_distance),
             shape: DistributionShape::Circle,
             collected: Vec::with_capacity(Self::MAX_ITEMS),
@@ -309,12 +309,12 @@ pub struct CollectorBundle {
 }
 
 impl CollectorBundle {
-    pub fn new(min_radius: f32, max_distance: f32) -> Self {
+    pub fn new(min_radius: f32, max_distance: f32, color: Color) -> Self {
         Self {
             transform: TransformBundle::default(),
             collider: Collider::sphere(1.0),
             sensor: Sensor,
-            collectible_sensor: Collector::new(min_radius, max_distance),
+            collectible_sensor: Collector::new(min_radius, max_distance, color),
             layer: CollisionLayers::new(ObjectLayer::Collector, [ObjectLayer::Collectible]),
             name: Name::new("Garbage Collector"),
         }
