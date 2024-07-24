@@ -19,6 +19,7 @@ pub use editor::DebugEditorPlugin;
 pub use garbage::GarbagePlugin;
 pub use light::LightPlugin;
 pub use map::MapPlugin;
+pub use particles::ParticleConfig;
 pub use particles::ParticlesPlugin;
 pub use player::PlayerPlugin;
 

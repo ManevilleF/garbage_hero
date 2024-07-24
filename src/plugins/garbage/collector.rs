@@ -1,87 +1,26 @@
-use super::{DistributionShape, GarbageItem, PointDistribution, ThrownItem};
-use crate::ObjectLayer;
+use super::{Collected, DistributionShape, GarbageItem, PointDistribution, ThrownItem};
+use crate::{ObjectLayer, ParticleConfig};
 use avian3d::prelude::*;
 use bevy::{
     ecs::component::{ComponentHooks, StorageType},
     log,
     prelude::*,
 };
+use bevy_hanabi::{EffectProperties, EffectSpawner, ParticleEffect, ParticleEffectBundle};
 
-#[derive(Debug, Reflect)]
-#[reflect(Component)]
-pub struct Collected {
-    pub collector_entity: Entity,
-}
+pub struct CollectorPlugin;
 
-impl Component for Collected {
-    const STORAGE_TYPE: StorageType = StorageType::Table;
+impl Plugin for CollectorPlugin {
+    fn build(&self, app: &mut App) {
+        app.register_type::<Collector>()
+            .add_systems(
+                FixedUpdate,
+                (auto_rotate, update_collected_position, collect_items),
+            )
+            .add_systems(PostUpdate, (update_radius, update_particles));
 
-    fn register_component_hooks(hooks: &mut ComponentHooks) {
-        hooks
-            .on_add(|mut world, entity, _| {
-                let Some(collected) = world.get::<Self>(entity) else {
-                    log::error!("on_remove hook triggered for {entity:?} without `Collected`");
-                    return;
-                };
-                let collected_pos = world
-                    .get::<GlobalTransform>(entity)
-                    .map(|gtr| gtr.translation().xz())
-                    .unwrap();
-                let collector_pos = world
-                    .get::<GlobalTransform>(collected.collector_entity)
-                    .map(|gtr| gtr.translation().xz())
-                    .unwrap();
-                let dir = Dir2::new(collected_pos - collector_pos).ok();
-
-                let Some(mut collector) = world.get_mut::<Collector>(collected.collector_entity)
-                else {
-                    log::error!("Cannot find collector of `Collected` entity {entity:?}");
-                    return;
-                };
-                if !collector.insert(entity, dir) {
-                    return;
-                };
-                let Some(mut layer) = world.get_mut::<CollisionLayers>(entity) else {
-                    log::error!("on_add hook triggered for {entity:?} without `CollisionLayers`");
-                    return;
-                };
-                // Collected entities should no longer interact withsome things
-                layer.filters.remove(ObjectLayer::Player);
-                layer.filters.remove(ObjectLayer::Collector);
-                let Some(mut scale) = world.get_mut::<GravityScale>(entity) else {
-                    log::warn!("on_add hook triggered for {entity:?} without `GravityScale`");
-                    return;
-                };
-                scale.0 = 0.0;
-            })
-            .on_remove(|mut world, entity, _| {
-                let Some(collected) = world.get::<Self>(entity) else {
-                    log::error!("on_remove hook triggered for {entity:?} without `Collected`");
-                    return;
-                };
-                let Some(mut collector) = world.get_mut::<Collector>(collected.collector_entity)
-                else {
-                    log::error!("Cannot find collector of `Collected` entity {entity:?}");
-                    return;
-                };
-                // Can be already removed
-                collector.remove(entity);
-
-                let Some(mut layer) = world.get_mut::<CollisionLayers>(entity) else {
-                    log::error!("on_add hook triggered for {entity:?} without `CollisionLayers`");
-                    return;
-                };
-                // Reset filter
-                layer.filters.add(ObjectLayer::Player);
-                layer.filters.add(ObjectLayer::Collector);
-
-                // Reset gravity scale
-                let Some(mut scale) = world.get_mut::<GravityScale>(entity) else {
-                    log::warn!("on_add hook triggered for {entity:?} without `GravityScale`");
-                    return;
-                };
-                scale.0 = 1.0;
-            });
+        #[cfg(feature = "debug")]
+        app.add_systems(PostUpdate, draw_gizmos);
     }
 }
 
@@ -110,6 +49,55 @@ impl Component for Collector {
                 commands.entity(entity).remove::<Collected>();
             }
         });
+    }
+}
+
+#[derive(Bundle)]
+pub struct CollectorBundle {
+    pub spatial: SpatialBundle,
+    pub collectible_sensor: Collector,
+    pub collider: Collider,
+    pub sensor: Sensor,
+    pub layer: CollisionLayers,
+    pub name: Name,
+}
+
+impl CollectorBundle {
+    pub fn new(min_radius: f32, max_distance: f32, color: Color) -> Self {
+        Self {
+            spatial: SpatialBundle::default(),
+            collider: Collider::sphere(1.0),
+            sensor: Sensor,
+            collectible_sensor: Collector::new(min_radius, max_distance, color),
+            layer: CollisionLayers::new(ObjectLayer::Collector, [ObjectLayer::Collectible]),
+            name: Name::new("Garbage Collector"),
+        }
+    }
+}
+
+#[derive(Component, Debug, Reflect)]
+#[reflect(Component)]
+pub struct CollectorParticles(pub Entity);
+
+#[derive(Bundle)]
+pub struct CollectorParticlesBundle {
+    pub collector: CollectorParticles,
+    pub particles: ParticleEffectBundle,
+    pub name: Name,
+}
+
+impl CollectorParticlesBundle {
+    pub fn new(collector_entity: Entity, color: Color, particles: &ParticleConfig) -> Self {
+        Self {
+            collector: CollectorParticles(collector_entity),
+            particles: ParticleEffectBundle {
+                effect: ParticleEffect::new(particles.collector_effect.clone()),
+                effect_properties: EffectProperties::default()
+                    .with_properties([("color".to_owned(), ParticleConfig::color_to_value(color))]),
+                ..default()
+            },
+            name: Name::new(format!("Collector {collector_entity:?} particles")),
+        }
     }
 }
 
@@ -146,12 +134,6 @@ impl Collector {
     fn rotation_angle(radius: f32, dt: f32) -> f32 {
         let angular_speed = Self::ANGULAR_SPEED / radius;
         angular_speed * dt
-    }
-
-    pub fn update_radius(mut collectors: Query<(&mut Transform, &Self), Changed<Self>>) {
-        for (mut tr, collector) in &mut collectors {
-            tr.scale = Vec3::splat(collector.radius() * Self::COLLECTOR_RADIUS_COEF);
-        }
     }
 
     #[inline]
@@ -198,49 +180,6 @@ impl Collector {
         self.shape
     }
 
-    pub fn update_collected_position(
-        mut collected: Query<
-            (&Transform, &mut LinearVelocity),
-            (With<Collected>, Without<ThrownItem>),
-        >,
-        mut collectors: Query<(&GlobalTransform, &Self)>,
-    ) {
-        for (center_tr, collector) in &mut collectors {
-            let center = center_tr.translation();
-            let mut collected = collected.iter_many_mut(&collector.collected);
-            let positions = collector.distribution.points();
-            let mut i = 0_usize;
-            while let Some((tr, mut linvel)) = collected.fetch_next() {
-                let target = positions[i];
-                let target = center + Vec3::new(target.x, 1.0, target.y);
-                let delta = target - tr.translation;
-
-                linvel.0 = delta * Self::COLLECTED_SPEED;
-                i += 1;
-            }
-        }
-    }
-
-    pub fn auto_rotate(time: Res<Time>, mut collectors: Query<(&GlobalTransform, &mut Self)>) {
-        let dt = time.delta_seconds();
-        for (gtr, mut collector) in &mut collectors {
-            match collector.shape {
-                DistributionShape::Circle => {
-                    let radius = collector.radius();
-                    collector
-                        .distribution
-                        .rotate(Self::rotation_angle(radius, dt));
-                }
-                DistributionShape::Arc => {
-                    let dir = gtr.forward().xz();
-                    collector
-                        .distribution
-                        .set_direction(Dir2::new_unchecked(dir));
-                }
-            }
-        }
-    }
-
     pub fn throw_collected(&self, direction: Dir2, force: f32) -> Option<impl FnOnce(&mut World)> {
         let (index, _) = self.distribution.find_closest_aligned_point(direction)?;
         let Some(entity) = self.collected.get(index).copied() else {
@@ -262,61 +201,108 @@ impl Collector {
                 .remove::<Collected>();
         })
     }
+}
 
-    pub fn collect_items(
-        mut commands: Commands,
-        collectors: Query<(Entity, &CollidingEntities, &Self)>,
-        items: Query<Entity, (With<GarbageItem>, Without<Collected>, Without<ThrownItem>)>,
-    ) {
-        for (collector_entity, collision, collector) in &collectors {
-            if !collector.enabled {
-                continue;
-            }
-            for item in items.iter_many(&collision.0) {
-                commands.entity(item).insert(Collected { collector_entity });
-            }
+pub fn update_radius(mut collectors: Query<(&mut Transform, &Collector), Changed<Collector>>) {
+    for (mut tr, collector) in &mut collectors {
+        tr.scale = Vec3::splat(collector.radius() * Collector::COLLECTOR_RADIUS_COEF);
+    }
+}
+
+fn update_particles(
+    mut particles: Query<(
+        &mut Transform,
+        &mut EffectSpawner,
+        &mut EffectProperties,
+        &CollectorParticles,
+    )>,
+    collectors: Query<(&GlobalTransform, Ref<Collector>)>,
+) {
+    for (mut tr, mut spawner, mut properties, target) in &mut particles {
+        let Ok((gtr, collector)) = collectors.get(target.0) else {
+            log::error!("Collector particles target is invalid");
+            continue;
+        };
+        tr.translation = gtr.translation();
+        if !collector.is_changed() {
+            continue;
+        }
+        spawner.set_active(collector.enabled);
+        properties.set("radius", collector.radius().into());
+    }
+}
+
+fn update_collected_position(
+    mut collected: Query<(&Transform, &mut LinearVelocity), (With<Collected>, Without<ThrownItem>)>,
+    mut collectors: Query<(&GlobalTransform, &Collector)>,
+) {
+    for (center_tr, collector) in &mut collectors {
+        let center = center_tr.translation();
+        let mut collected = collected.iter_many_mut(&collector.collected);
+        let positions = collector.distribution.points();
+        let mut i = 0_usize;
+        while let Some((tr, mut linvel)) = collected.fetch_next() {
+            let target = positions[i];
+            let target = center + Vec3::new(target.x, 1.0, target.y);
+            let delta = target - tr.translation;
+
+            linvel.0 = delta * Collector::COLLECTED_SPEED;
+            i += 1;
         }
     }
+}
 
-    pub fn draw_gizmos(mut gizmos: Gizmos, collectors: Query<(&GlobalTransform, &Self)>) {
-        use bevy::color::palettes::css::DARK_GRAY;
-        let color = Color::Srgba(DARK_GRAY);
-
-        for (gt, collector) in &collectors {
-            let translation = gt.translation();
-            gizmos.circle(
-                translation,
-                Dir3::Y,
-                collector.distribution.radius(collector.collected.len()),
-                color,
-            );
-            for pos in collector.distribution.points() {
-                let p = translation + Vec3::new(pos.x, 0.0, pos.y);
-                gizmos.sphere(p, Quat::IDENTITY, 0.2, color);
+fn auto_rotate(time: Res<Time>, mut collectors: Query<(&GlobalTransform, &mut Collector)>) {
+    let dt = time.delta_seconds();
+    for (gtr, mut collector) in &mut collectors {
+        match collector.shape {
+            DistributionShape::Circle => {
+                let radius = collector.radius();
+                collector
+                    .distribution
+                    .rotate(Collector::rotation_angle(radius, dt));
+            }
+            DistributionShape::Arc => {
+                let dir = gtr.forward().xz();
+                collector
+                    .distribution
+                    .set_direction(Dir2::new_unchecked(dir));
             }
         }
     }
 }
 
-#[derive(Bundle)]
-pub struct CollectorBundle {
-    pub transform: TransformBundle,
-    pub collectible_sensor: Collector,
-    pub collider: Collider,
-    pub sensor: Sensor,
-    pub layer: CollisionLayers,
-    pub name: Name,
+fn collect_items(
+    mut commands: Commands,
+    collectors: Query<(Entity, &CollidingEntities, &Collector)>,
+    items: Query<Entity, (With<GarbageItem>, Without<Collected>, Without<ThrownItem>)>,
+) {
+    for (collector_entity, collision, collector) in &collectors {
+        if !collector.enabled {
+            continue;
+        }
+        for item in items.iter_many(&collision.0) {
+            commands.entity(item).insert(Collected { collector_entity });
+        }
+    }
 }
 
-impl CollectorBundle {
-    pub fn new(min_radius: f32, max_distance: f32, color: Color) -> Self {
-        Self {
-            transform: TransformBundle::default(),
-            collider: Collider::sphere(1.0),
-            sensor: Sensor,
-            collectible_sensor: Collector::new(min_radius, max_distance, color),
-            layer: CollisionLayers::new(ObjectLayer::Collector, [ObjectLayer::Collectible]),
-            name: Name::new("Garbage Collector"),
+#[cfg(feature = "debug")]
+fn draw_gizmos(mut gizmos: Gizmos, collectors: Query<(&GlobalTransform, &Collector)>) {
+    use bevy::color::palettes::css::DARK_GRAY;
+    let color = Color::Srgba(DARK_GRAY);
+
+    for (gt, collector) in &collectors {
+        let translation = gt.translation();
+        gizmos.circle(
+            translation,
+            Dir3::Y,
+            collector.distribution.radius(collector.collected.len()),
+            color,
+        );
+        for pos in collector.distribution.points() {
+            let p = translation + Vec3::new(pos.x, 0.0, pos.y);
+            gizmos.sphere(p, Quat::IDENTITY, 0.2, color);
         }
     }
 }

@@ -1,5 +1,5 @@
 use avian3d::prelude::*;
-use bevy::{color::palettes::css::BURLYWOOD, prelude::*};
+use bevy::{color::palettes::css::PALE_TURQUOISE, prelude::*};
 
 use crate::ObjectLayer;
 
@@ -45,7 +45,7 @@ impl MapElementBundle {
 fn create_default_ground(mut commands: Commands, assets: Res<MapAssets>) {
     let mut bundle = MapElementBundle::new_cube(&assets);
     bundle.pbr.transform.translation.y = -1.0;
-    bundle.pbr.transform.scale = Vec3::new(100.0, 1.0, 100.0);
+    bundle.pbr.transform.scale = Vec3::new(500.0, 1.0, 500.0);
     bundle.name = Name::new("Ground");
     commands.spawn(bundle);
 }
@@ -61,7 +61,7 @@ impl FromWorld for MapAssets {
     fn from_world(world: &mut World) -> Self {
         let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
         let default_mat = materials.add(StandardMaterial {
-            base_color: Color::Srgba(BURLYWOOD),
+            base_color: Color::Srgba(PALE_TURQUOISE),
             ..default()
         });
         let mut meshes = world.resource_mut::<Assets<Mesh>>();

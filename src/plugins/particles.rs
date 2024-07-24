@@ -29,7 +29,7 @@ impl Plugin for ParticlesPlugin {
 #[reflect(Resource)]
 struct DestructionInstructions {
     /// Position, color as a u32
-    data: Vec<(Vec3, u32)>,
+    data: Vec<(Vec3, Color)>,
 }
 
 fn trigger_destroy_particles(
@@ -37,9 +37,7 @@ fn trigger_destroy_particles(
     mut instructions: ResMut<DestructionInstructions>,
 ) {
     for (gtr, item) in &targets {
-        let [r, g, b, a] = item.color().to_srgba().to_u8_array();
-        let color = (a as u32) << 24 | (b as u32) << 16 | (g as u32) << 8 | (r as u32);
-        instructions.data.push((gtr.translation(), color));
+        instructions.data.push((gtr.translation(), item.color()));
     }
 }
 
@@ -57,7 +55,7 @@ fn apply_destruction_particles(
         return;
     };
     particle_tr.translation = pos;
-    properties.set("color", color.into());
+    properties.set("color", ParticleConfig::color_to_value(color));
     spawner.reset();
 }
 
@@ -65,14 +63,90 @@ fn apply_destruction_particles(
 #[reflect(Resource)]
 pub struct ParticleConfig {
     pub destruction_emitter: Entity,
-    // pub damage: Entity,
+    pub collector_effect: Handle<EffectAsset>, // pub damage: Entity,
 }
 
-impl FromWorld for ParticleConfig {
-    fn from_world(world: &mut World) -> Self {
-        let server = world.resource::<AssetServer>();
-        let texture = server.load("kenney_particle-pack/png/circle_05.png");
-        let mut assets = world.resource_mut::<Assets<EffectAsset>>();
+impl ParticleConfig {
+    pub fn color_to_value(color: Color) -> Value {
+        let [r, g, b, a] = color.to_srgba().to_u8_array();
+        ((a as u32) << 24 | (b as u32) << 16 | (g as u32) << 8 | (r as u32)).into()
+    }
+
+    pub fn color_from_value(value: Value) -> Color {
+        let color = value.as_scalar().as_u32();
+        let r = (color & 0x000000FF) as u8;
+        let g = ((color & 0x0000FF00) >> 8) as u8;
+        let b = ((color & 0x00FF0000) >> 16) as u8;
+        let a = ((color & 0xFF000000) >> 24) as u8;
+        Color::Srgba(Srgba::from_u8_array([r, g, b, a]))
+    }
+
+    fn collector_effect() -> EffectAsset {
+        let mut size_gradient = Gradient::new();
+        size_gradient.add_key(0.0, Vec2::new(0.0, 0.0));
+        size_gradient.add_key(0.3, Vec2::new(1.0, 0.08));
+        size_gradient.add_key(1.0, Vec2::splat(0.0));
+
+        let writer = ExprWriter::new();
+
+        let spawn_color = writer.add_property("color", 0xFFFFFFFFu32.into());
+        let color = writer.prop(spawn_color).expr();
+        let init_color = SetAttributeModifier::new(Attribute::COLOR, color);
+
+        let radius_prop = writer.add_property("radius", 3.0_f32.into());
+        let radius = writer.prop(radius_prop).expr();
+
+        let init_pos = SetPositionCircleModifier {
+            center: writer.lit(Vec3::ZERO).expr(),
+            axis: writer.lit(Vec3::Y).expr(),
+            radius,
+            dimension: ShapeDimension::Surface,
+        };
+
+        let age = writer.lit(0.).expr();
+        let init_age = SetAttributeModifier::new(Attribute::AGE, age);
+
+        // Give a bit of variation by randomizing the lifetime per particle
+        let lifetime = writer.lit(1.0).uniform(writer.lit(1.5)).expr();
+        let init_lifetime = SetAttributeModifier::new(Attribute::LIFETIME, lifetime);
+
+        let init_tangent = SetVelocityTangentModifier {
+            origin: writer.lit(Vec3::ZERO).expr(),
+            axis: writer.lit(Vec3::Y).expr(),
+            speed: writer.lit(-5.0).expr(),
+        };
+        // Create some effect by adding some radial acceleration pointing at
+        // the origin (0,0,0) and some upward acceleration (alongside Y).
+        let speed = writer
+            .prop(radius_prop)
+            .mul(writer.lit(-1.0))
+            .add(writer.lit(-10.0));
+        let radial = writer.attr(Attribute::POSITION).normalized().mul(speed);
+        let accel = radial;
+        let update_accel = AccelModifier::new(accel.expr());
+
+        // Add drag to make particles slow down a bit after the initial acceleration
+        let drag = writer.lit(1.).expr();
+        let update_drag = LinearDragModifier::new(drag);
+
+        EffectAsset::new(vec![16384], Spawner::rate(100.0.into()), writer.finish())
+            .with_name("Collector")
+            .init(init_color)
+            .init(init_pos)
+            .init(init_age)
+            .init(init_lifetime)
+            .init(init_tangent)
+            .update(update_drag)
+            .update(update_accel)
+            .render(SizeOverLifetimeModifier {
+                gradient: size_gradient,
+                screen_space_size: false,
+            })
+            .render(OrientModifier::new(OrientMode::AlongVelocity))
+            .with_simulation_space(SimulationSpace::Local)
+    }
+
+    fn destruction_effect(texture: Handle<Image>) -> EffectAsset {
         // Set `spawn_immediately` to false to spawn on command with Spawner::reset()
         let spawner = Spawner::once(50.0.into(), false);
         let mut size_gradient = Gradient::new();
@@ -112,7 +186,7 @@ impl FromWorld for ParticleConfig {
             sample_mapping: ImageSampleMapping::ModulateOpacityFromR,
         };
 
-        let effect = EffectAsset::new(vec![32768], spawner, writer.finish())
+        EffectAsset::new(vec![32768], spawner, writer.finish())
             .with_name("Object Destruction")
             .init(init_color)
             .init(init_pos)
@@ -125,12 +199,25 @@ impl FromWorld for ParticleConfig {
             .render(OrientModifier {
                 mode: OrientMode::FaceCameraPosition,
                 rotation: None,
-            });
+            })
+    }
+}
 
-        let effect_handle = assets.add(effect);
-        let destruction = world.spawn(ParticleEffectBundle::new(effect_handle)).id();
+impl FromWorld for ParticleConfig {
+    fn from_world(world: &mut World) -> Self {
+        let server = world.resource::<AssetServer>();
+        let texture = server.load("kenney_particle-pack/png/circle_05.png");
+        let mut assets = world.resource_mut::<Assets<EffectAsset>>();
+
+        let collector_effect = assets.add(Self::collector_effect());
+        let destruction_handle = assets.add(Self::destruction_effect(texture));
+        let destruction_emitter = world
+            .spawn(ParticleEffectBundle::new(destruction_handle))
+            .id();
+
         Self {
-            destruction_emitter: destruction,
+            destruction_emitter,
+            collector_effect,
         }
     }
 }
@@ -140,14 +227,7 @@ pub fn draw_gizmos(mut gizmos: Gizmos, effects: Query<(&GlobalTransform, &Effect
     for (gtr, props) in &effects {
         let color = props
             .get_stored("color")
-            .map(|v| {
-                let color = v.as_scalar().as_u32();
-                let r = (color & 0x000000FF) as u8;
-                let g = ((color & 0x0000FF00) >> 8) as u8;
-                let b = ((color & 0x00FF0000) >> 16) as u8;
-                let a = ((color & 0xFF000000) >> 24) as u8;
-                Color::Srgba(Srgba::from_u8_array([r, g, b, a]))
-            })
+            .map(ParticleConfig::color_from_value)
             .unwrap_or(Color::BLACK);
         gizmos.sphere(gtr.translation(), Quat::IDENTITY, 1.0, color);
     }

@@ -1,4 +1,9 @@
-use super::{common::Health, garbage::CollectorBundle};
+use crate::ParticleConfig;
+
+use super::{
+    common::Health,
+    garbage::{CollectorBundle, CollectorParticlesBundle},
+};
 use bevy::prelude::*;
 
 mod assets;
@@ -45,29 +50,6 @@ pub struct Player {
     pub controller: GameController,
 }
 
-impl Player {
-    pub fn spawn(self, position: Vec3) -> impl FnOnce(&mut World) {
-        move |world| {
-            let assets = world.resource::<PlayerAssets>();
-            let color = assets.colors[self.id as usize];
-            let visuals_bundle = PlayerVisualsBundle::new(self.id as usize, assets);
-            let mut bundle = PlayerBundle::new(self);
-            bundle.spatial.transform.translation = position;
-            let entity = world
-                .spawn(bundle)
-                .with_children(|b| {
-                    let collector_bundle = CollectorBundle::new(3.0, 1.0, color);
-                    b.spawn(collector_bundle);
-                    b.spawn(visuals_bundle);
-                })
-                .id();
-            let assets = world.resource::<PlayerAssets>();
-            let marker_bundle = PlayerAimMarkerBundle::new(self.id as usize, entity, assets);
-            world.spawn(marker_bundle);
-        }
-    }
-}
-
 #[derive(Bundle)]
 pub struct PlayerBundle {
     pub player: Player,
@@ -96,8 +78,53 @@ impl PlayerBundle {
     }
 }
 
-pub fn spawn_players(mut connected_evr: EventReader<PlayerConnected>, mut commands: Commands) {
-    for event in connected_evr.read() {
-        commands.add(event.0.spawn(Vec3::Y * 3.0));
+pub fn spawn_players(
+    mut commands: Commands,
+    players: Query<&GlobalTransform, With<Player>>,
+    mut connected_evr: EventReader<PlayerConnected>,
+    assets: Res<PlayerAssets>,
+    particles: Res<ParticleConfig>,
+) {
+    let position = players
+        .iter()
+        .next()
+        .map(|gtr| gtr.translation())
+        .unwrap_or(Vec3::Y * 3.0);
+    for PlayerConnected(player) in connected_evr.read() {
+        let color = assets.colors[player.id as usize];
+        // Offset
+        let mut bundle = PlayerBundle::new(*player);
+        bundle.spatial.transform.translation = position;
+
+        let root_entity = commands
+            .spawn((
+                SpatialBundle::default(),
+                Name::new(format!("{} Root", bundle.name)),
+            ))
+            .id();
+        let player_entity = commands.spawn(bundle).set_parent(root_entity).id();
+
+        let collector_entity = commands
+            .spawn(CollectorBundle::new(4.0, 1.0, color))
+            .set_parent(player_entity)
+            .id();
+        commands
+            .spawn(CollectorParticlesBundle::new(
+                collector_entity,
+                color,
+                &particles,
+            ))
+            .set_parent(root_entity);
+        commands
+            .spawn(PlayerVisualsBundle::new(player.id as usize, &assets))
+            .set_parent(player_entity);
+        // Marker
+        commands
+            .spawn(PlayerAimMarkerBundle::new(
+                player.id as usize,
+                player_entity,
+                &assets,
+            ))
+            .set_parent(root_entity);
     }
 }
