@@ -1,6 +1,6 @@
 use std::f32::consts::PI;
 
-use avian3d::prelude::LinearVelocity;
+use avian3d::prelude::*;
 use bevy::{
     ecs::{
         component::{ComponentHooks, StorageType},
@@ -46,7 +46,8 @@ impl Plugin for GarbagePlugin {
                 Collector::collect_items,
             ),
         )
-        .add_systems(PostUpdate, (Collector::update_radius, reset_thrown_items));
+        .add_systems(PostUpdate, (Collector::update_radius, reset_thrown_items))
+        .add_systems(PostProcessCollisions, filter_thrown_collisions);
 
         #[cfg(feature = "debug")]
         app.add_systems(PostUpdate, Collector::draw_gizmos);
@@ -105,6 +106,37 @@ fn reset_thrown_items(
             commands.entity(entity).remove::<ThrownItem>();
         }
     }
+}
+
+fn filter_thrown_collisions(
+    mut collisions: ResMut<Collisions>,
+    thrown: Query<&ThrownItem>,
+    collected: Query<&Collected>,
+) {
+    collisions.retain(|contact| {
+        let entities = [contact.entity1, contact.entity2];
+        let mut thrown_item_collector: Option<Entity> = None;
+        let mut collected_item_collector: Option<Entity> = None;
+
+        for &entity in &entities {
+            if let Ok(thrown_item) = thrown.get(entity) {
+                thrown_item_collector = Some(thrown_item.collector_entity);
+            }
+            if let Ok(collected_item) = collected.get(entity) {
+                collected_item_collector = Some(collected_item.collector_entity);
+            }
+        }
+
+        // If both a thrown item and a collected item are found, compare their collector_entity fields
+        if let (Some(thrown_collector), Some(collected_collector)) =
+            (thrown_item_collector, collected_item_collector)
+        {
+            thrown_collector != collected_collector
+        } else {
+            // If either is None, we don't have a match and thus don't filter out the collision
+            true
+        }
+    });
 }
 
 pub fn spawn_some_garbage<S>(amount: usize, origin: Vec3, shape: S) -> impl FnOnce(&mut World)
