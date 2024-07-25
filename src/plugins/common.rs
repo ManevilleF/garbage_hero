@@ -47,8 +47,8 @@ impl Health {
         self.heal(amount);
     }
 
-    pub fn percent(&self) -> f32 {
-        (self.current as f32 / self.max as f32)
+    pub fn ratio(&self) -> f32 {
+        self.current as f32 / self.max as f32
     }
 }
 

@@ -23,7 +23,13 @@ struct UiState {
 
 #[derive(Component, Reflect)]
 #[reflect(Component)]
+// Player -> Ui
 struct HealthUi(Entity);
+
+#[derive(Component, Reflect)]
+#[reflect(Component)]
+// Ui -> Player
+struct PlayerUI(Entity);
 
 fn setup_ui(mut commands: Commands) {
     let root_node = commands
@@ -70,6 +76,7 @@ fn create_player_ui(
                     ..default()
                 },
                 Name::new(format!("Player {} Root node", player.id)),
+                PlayerUI(entity),
             ))
             .set_parent(state.root_node)
             .id();
@@ -171,6 +178,6 @@ fn update_health(
         let Ok(mut style) = ui.get_mut(*ui_entity) else {
             return;
         };
-        style.width = Val::Percent(health.percent() * 100.0);
+        style.width = Val::Percent(health.ratio() * 100.0);
     }
 }

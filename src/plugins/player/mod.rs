@@ -13,7 +13,7 @@ mod skills;
 mod ui;
 
 use assets::{PlayerAimMarkerBundle, PlayerAssets, PlayerVisualsBundle, PlayerVisualsPlugin};
-pub use input::{GameController, PlayerInputAction};
+pub use input::{GameController, PlayerInput};
 use input::{PlayerInputBundle, PlayerInputPlugin};
 use movement::{PlayerMovementBundle, PlayerMovementPlugin};
 pub use skills::{ActiveSkill, PlayerSkill, SkillState};

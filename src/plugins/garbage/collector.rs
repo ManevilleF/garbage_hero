@@ -1,5 +1,5 @@
 use super::{Collected, DistributionShape, GarbageItem, PointDistribution, ThrownItem};
-use crate::{ObjectLayer, ParticleConfig};
+use crate::{GameState, ObjectLayer, ParticleConfig};
 use avian3d::prelude::*;
 use bevy::{
     ecs::component::{ComponentHooks, StorageType},
@@ -15,7 +15,8 @@ impl Plugin for CollectorPlugin {
         app.register_type::<Collector>()
             .add_systems(
                 FixedUpdate,
-                (auto_rotate, update_collected_position, collect_items),
+                (auto_rotate, update_collected_position, collect_items)
+                    .run_if(in_state(GameState::Running)),
             )
             .add_systems(PostUpdate, (update_radius, update_particles));
 

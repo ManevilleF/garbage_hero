@@ -1,6 +1,6 @@
 #![warn(clippy::all, clippy::nursery)]
 #![allow(dead_code, clippy::type_complexity)]
-use avian3d::{prelude::PhysicsLayer, PhysicsPlugins};
+use avian3d::prelude::*;
 use bevy::{core_pipeline::experimental::taa::TemporalAntiAliasPlugin, prelude::*};
 use bevy_mod_outline::{
     AsyncSceneInheritOutlinePlugin, AutoGenerateOutlineNormalsPlugin, OutlinePlugin,
@@ -15,7 +15,6 @@ const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(States, Debug, Default, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum GameState {
-    MainMenu,
     #[default]
     Running,
     Pause,
@@ -32,6 +31,9 @@ pub enum ObjectLayer {
     Collector,
 }
 
+#[derive(Event, Clone, Copy, Default)]
+pub struct PauseGame;
+
 pub fn run() -> AppExit {
     println!("Running {APP_NAME} v{APP_VERSION}");
     let mut app = App::new();
@@ -44,6 +46,7 @@ pub fn run() -> AppExit {
         ..default()
     }))
     .init_state::<GameState>()
+    .add_event::<PauseGame>()
     // Built in
     .add_plugins((
         PhysicsPlugins::default(),
@@ -69,4 +72,27 @@ pub fn run() -> AppExit {
     #[cfg(feature = "debug_physics")]
     app.add_plugins(avian3d::debug_render::PhysicsDebugPlugin::default());
     app.run()
+}
+
+fn handle_pause(
+    state: Res<State<GameState>>,
+    mut nextstate: ResMut<NextState<GameState>>,
+    mut events: EventReader<PauseGame>,
+    mut physics_time: ResMut<Time<Physics>>,
+) {
+    if events.is_empty() {
+        return;
+    }
+    events.clear();
+    let new_state = match state.get() {
+        GameState::Running => {
+            physics_time.pause();
+            GameState::Pause
+        }
+        GameState::Pause => {
+            physics_time.unpause();
+            GameState::Running
+        }
+    };
+    nextstate.set(new_state);
 }

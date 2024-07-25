@@ -1,7 +1,7 @@
 use bevy::{prelude::*, utils::HashMap};
 use leafwing_input_manager::prelude::*;
 
-use crate::plugins::player::{GameController, PlayerInputAction};
+use crate::plugins::player::{GameController, PlayerInput};
 
 const NOT_FOUND_ICON: &str = "kenney_input-prompts/Flairs/flair_disabled.png";
 const NO_INPUT_ICON: &str = "kenney_input-prompts/Flairs/flair_disabled_cross.png";
@@ -11,12 +11,12 @@ const CONTROLLER_ICON: &str = "kenney_input-prompts/Xbox/controller_xboxseries.p
 #[derive(Component, Debug, Clone)]
 pub struct InputMapIcons {
     pub controller_icon: Handle<Image>,
-    pub input_icons: HashMap<PlayerInputAction, Handle<Image>>,
+    pub input_icons: HashMap<PlayerInput, Handle<Image>>,
 }
 
 impl InputMapIcons {
     pub fn new(
-        map: &InputMap<PlayerInputAction>,
+        map: &InputMap<PlayerInput>,
         controller: &GameController,
         server: &AssetServer,
     ) -> Self {
@@ -55,11 +55,11 @@ pub fn input_icon(input: UserInput) -> Option<&'static str> {
     }
 }
 
-pub const fn single_input_icon(input: InputKind) -> Option<&'static str> {
+pub fn single_input_icon(input: InputKind) -> Option<&'static str> {
     match input {
         InputKind::GamepadButton(b) => xbox_icon(b),
         InputKind::SingleAxis(_) => None,
-        InputKind::DualAxis(_) => None,
+        InputKind::DualAxis(d) => dual_axis_icon(d),
         InputKind::PhysicalKey(k) => keyboard_icon(k),
         InputKind::Modifier(_) => None,
         InputKind::Mouse(b) => mouse_button_icon(b),
@@ -91,6 +91,19 @@ pub fn virtual_axis_icon(axis: VirtualAxis) -> Option<&'static str> {
         "kenney_input-prompts/Xbox/xbox_dpad_horizontal.png"
     } else if axis == VirtualAxis::vertical_dpad() {
         "kenney_input-prompts/Xbox/xbox_dpad_vertical.png"
+    } else {
+        return None;
+    };
+    Some(path)
+}
+
+pub fn dual_axis_icon(axis: DualAxis) -> Option<&'static str> {
+    let path = if axis == DualAxis::left_stick() {
+        "kenney_input-prompts/Xbox/xbox_stick_l.png"
+    } else if axis == DualAxis::right_stick() {
+        "kenney_input-prompts/Xbox/xbox_stick_r.png"
+    } else if axis == DualAxis::mouse_motion() {
+        "kenney_input-prompts/Keyboard&Mouse/mouse_move.png"
     } else {
         return None;
     };

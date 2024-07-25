@@ -3,12 +3,15 @@ use bevy::{log, prelude::*, utils::HashMap};
 use leafwing_input_manager::action_state::ActionState;
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use crate::plugins::{
-    camera::CameraParams,
-    garbage::{Collector, DistributionShape},
+use crate::{
+    plugins::{
+        camera::CameraParams,
+        garbage::{Collector, DistributionShape},
+    },
+    GameState,
 };
 
-use super::{input::PlayerInputAction, GameController, Player};
+use super::{input::PlayerInput, GameController, Player};
 
 pub struct PlayerSkillsPlugin;
 
@@ -22,7 +25,8 @@ impl Plugin for PlayerSkillsPlugin {
                 (
                     (update_aim, apply_aim).chain(),
                     (update_skills, (collector_skills, throw_skill, dash_skill)).chain(),
-                ),
+                )
+                    .run_if(in_state(GameState::Running)),
             );
         #[cfg(feature = "debug")]
         app.add_systems(PostUpdate, draw_gizmos);
@@ -116,7 +120,7 @@ fn update_aim(
         &mut PlayerAim,
         &Player,
         &GlobalTransform,
-        &ActionState<PlayerInputAction>,
+        &ActionState<PlayerInput>,
     )>,
     camera: CameraParams,
 ) {
@@ -149,18 +153,12 @@ fn update_aim(
             }
             GameController::Gamepad(_) => {
                 let Some(dir) = action_state
-                    .clamped_axis_pair(&PlayerInputAction::Aim)
+                    .clamped_axis_pair(&PlayerInput::Aim)
                     .map(Vec2::from)
                 else {
                     continue;
                 };
-                let Ok(direction) = Dir2::new(dir) else {
-                    log::error!(
-                        "Failed to normalize aim direction {dir:?} for player {}",
-                        player.id
-                    );
-                    continue;
-                };
+                let direction = Dir2::new(dir).unwrap_or(Dir2::Y);
                 let mut dir = aim.map_unchanged(|aim| &mut aim.dir);
                 dir.set_if_neq(direction);
             }
@@ -170,11 +168,7 @@ fn update_aim(
 
 fn update_skills(
     time: Res<Time>,
-    mut players: Query<(
-        &mut SkillState,
-        &mut ActiveSkill,
-        &ActionState<PlayerInputAction>,
-    )>,
+    mut players: Query<(&mut SkillState, &mut ActiveSkill, &ActionState<PlayerInput>)>,
 ) {
     let dt = time.delta_seconds();
     for (mut state, mut active, input) in &mut players {
@@ -183,7 +177,7 @@ fn update_skills(
             .values_mut()
             .for_each(|cooldown| *cooldown = (*cooldown - dt).max(0.0));
         if let Some(skill) = active.active {
-            if !input.pressed(&PlayerInputAction::Skill(skill)) {
+            if !input.pressed(&PlayerInput::Skill(skill)) {
                 active.active = None;
                 state.cooldowns.insert(skill, skill.cooldown());
             } else {
@@ -191,7 +185,7 @@ fn update_skills(
             }
         }
         for (skill, cooldown) in &state.cooldowns {
-            if *cooldown <= 0.0 && input.just_pressed(&PlayerInputAction::Skill(*skill)) {
+            if *cooldown <= 0.0 && input.just_pressed(&PlayerInput::Skill(*skill)) {
                 active.active = Some(*skill);
                 break;
             }

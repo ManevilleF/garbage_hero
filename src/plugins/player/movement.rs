@@ -1,9 +1,9 @@
-use crate::ObjectLayer;
+use crate::{GameState, ObjectLayer};
 use avian3d::prelude::*;
 use bevy::prelude::*;
 use leafwing_input_manager::prelude::*;
 
-use super::{assets::PlayerAssets, input::PlayerInputAction, Player, PLAYER_HEIGHT, PLAYER_RADIUS};
+use super::{assets::PlayerAssets, input::PlayerInput, Player, PLAYER_HEIGHT, PLAYER_RADIUS};
 
 pub struct PlayerMovementPlugin;
 
@@ -13,7 +13,9 @@ impl Plugin for PlayerMovementPlugin {
             .register_type::<MovementDampingFactor>()
             .add_systems(
                 Update,
-                (apply_gravity, apply_movement, apply_movement_damping).chain(),
+                (apply_gravity, apply_movement, apply_movement_damping)
+                    .chain()
+                    .run_if(in_state(GameState::Running)),
             );
         #[cfg(feature = "debug")]
         app.add_systems(PostUpdate, draw_gizmos);
@@ -61,14 +63,14 @@ impl PlayerMovementBundle {
 pub fn apply_movement(
     mut controllers: Query<(
         &mut LinearVelocity,
-        &ActionState<PlayerInputAction>,
+        &ActionState<PlayerInput>,
         &MovementSpeed,
     )>,
     time: Res<Time>,
 ) {
     let dt = time.delta_seconds();
     for (mut velocity, action_state, speed) in &mut controllers {
-        if let Some(dir) = PlayerInputAction::get_movement(action_state) {
+        if let Some(dir) = PlayerInput::get_movement(action_state) {
             velocity.x -= dir.x * dt * speed.0;
             velocity.z += dir.y * dt * speed.0;
         }
