@@ -18,7 +18,7 @@ impl Plugin for PlayerInputPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<PlayerInput>()
             .add_plugins(InputManagerPlugin::<PlayerInput>::default())
-            .add_systems(Update, handle_new_controllers);
+            .add_systems(Update, (handle_new_controllers, pause_game));
     }
 }
 

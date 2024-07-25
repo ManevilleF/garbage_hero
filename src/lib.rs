@@ -64,7 +64,8 @@ pub fn run() -> AppExit {
         CameraPlugin,
         MapPlugin,
         ParticlesPlugin,
-    ));
+    ))
+    .add_systems(PostUpdate, handle_pause);
     #[cfg(feature = "debug")]
     app.add_plugins(DebugPlugin);
     #[cfg(feature = "editor")]

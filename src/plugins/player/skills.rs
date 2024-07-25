@@ -239,7 +239,7 @@ fn dash_skill(
     mut commands: Commands,
     players: Query<(Entity, &PlayerAim, &ActiveSkill, &LinearVelocity), Changed<ActiveSkill>>,
 ) {
-    const DASH_SPEED: f32 = 300.0;
+    const DASH_SPEED: f32 = 500.0;
 
     for (entity, aim, skill, linvel) in &players {
         if skill.active != Some(PlayerSkill::Dash) {
