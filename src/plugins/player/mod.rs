@@ -16,14 +16,14 @@ use assets::{PlayerAimMarkerBundle, PlayerAssets, PlayerVisualsBundle, PlayerVis
 pub use input::{GameController, PlayerInput};
 use input::{PlayerInputBundle, PlayerInputPlugin};
 use movement::{PlayerMovementBundle, PlayerMovementPlugin};
-pub use skills::{ActiveSkill, PlayerSkill, SkillState};
+pub use skills::{ActiveSkill, SkillState};
 use skills::{PlayerSkillsBundle, PlayerSkillsPlugin};
 use ui::PlayerUiPlugin;
 
-const MAX_PLAYERS: u8 = 12;
+const MAX_PLAYERS: u8 = 10;
 const PLAYER_RADIUS: f32 = 0.8;
 const PLAYER_HEIGHT: f32 = 1.5;
-const BASE_PLAYER_HEALTH: u16 = 500;
+const BASE_PLAYER_HEALTH: u16 = 100;
 const BASE_SENSOR_STRENGTH: f32 = 10.0;
 
 pub struct PlayerPlugin;

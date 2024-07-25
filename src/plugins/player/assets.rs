@@ -55,7 +55,7 @@ impl PlayerAimMarkerBundle {
     pub fn new(id: usize, player_entity: Entity, assets: &PlayerAssets) -> Self {
         Self {
             pbr: PbrBundle {
-                transform: Transform::from_xyz(0.0, 0.05, 0.0),
+                transform: Transform::from_xyz(0.0, 0.55, 0.0),
                 mesh: assets.marker_mesh.clone_weak(),
                 material: assets.marker_mats[id].clone_weak(),
                 ..default()
@@ -102,11 +102,9 @@ impl FromWorld for PlayerAssets {
             Color::srgb_u8(191, 255, 0),   // #BFFF00 - Lime
             Color::srgb_u8(0, 149, 255),   // #0095FF - Sky Blue
             Color::srgb_u8(255, 0, 170),   // #FF00AA - Magenta
-            Color::srgb_u8(255, 212, 0),   // #FFD400 - Gold
             Color::srgb_u8(106, 255, 0),   // #6AFF00 - Green
             Color::srgb_u8(0, 64, 255),    // #0040FF - Blue
             Color::srgb_u8(255, 255, 255), // #FFFFFF - White
-            Color::srgb_u8(0, 0, 0),       // #000000 - Black
         ];
         let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
         let marker_mats = colors.map(|c| {
@@ -125,16 +123,14 @@ impl FromWorld for PlayerAssets {
         ));
         let server = world.resource::<AssetServer>();
         let scenes = [
-            "character-male-a",
-            "character-female-a",
+            "character-male-e",
+            "character-female-e",
             "character-male-b",
             "character-female-b",
             "character-male-c",
             "character-female-c",
             "character-male-d",
             "character-female-d",
-            "character-male-e",
-            "character-female-e",
             "character-male-f",
             "character-female-f",
         ]

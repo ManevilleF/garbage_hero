@@ -21,7 +21,12 @@ impl Plugin for CollectorPlugin {
             .add_systems(PostUpdate, (update_radius, update_particles));
 
         #[cfg(feature = "debug")]
-        app.add_systems(PostUpdate, draw_gizmos);
+        app.add_systems(
+            PostUpdate,
+            draw_gizmos
+                .after(avian3d::prelude::PhysicsSet::Sync)
+                .before(TransformSystem::TransformPropagate),
+        );
     }
 }
 

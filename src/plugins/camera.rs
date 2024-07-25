@@ -98,6 +98,7 @@ pub fn follow_players(
     let center = (max + min) / 2.0;
     let target = Vec3::new(center.x, 0.0, center.y) + CAM_OFFSET;
     cam_tr.translation = cam_tr.translation.lerp(target, dt * CAMERA_DECAY_RATE);
+    cam_tr.translation = target;
     // Projection
     let size = max - min;
     let target = (size.max_element() * CAM_SCALE_COEF).max(CAM_MIN_SCALE);

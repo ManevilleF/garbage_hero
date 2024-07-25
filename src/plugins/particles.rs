@@ -19,8 +19,13 @@ impl Plugin for ParticlesPlugin {
                 (trigger_destroy_particles, apply_destruction_particles),
             );
 
-        #[cfg(feature = "debug")]
-        app.add_systems(PostUpdate, draw_gizmos);
+        // #[cfg(feature = "debug")]
+        // app.add_systems(
+        //     PostUpdate,
+        //     draw_gizmos
+        //         .after(avian3d::prelude::PhysicsSet::Sync)
+        //         .before(TransformSystem::TransformPropagate),
+        // );
     }
 }
 

@@ -8,7 +8,7 @@ mod distribution;
 mod items;
 mod throw;
 
-pub use builds::{AvailableItemBuilds, ItemBuild, SpawnBuild};
+pub use builds::{AvailableItemBuilds, SpawnBuild};
 pub use collected::Collected;
 pub use collector::{Collector, CollectorBundle, CollectorParticlesBundle};
 pub use distribution::DistributionShape;

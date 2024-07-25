@@ -56,7 +56,7 @@ pub fn run() -> AppExit {
         TemporalAntiAliasPlugin,
     ))
     // Physics config
-    .insert_resource(SubstepCount(4))
+    .insert_resource(SubstepCount(3))
     // Custom
     .add_plugins((
         LightPlugin,

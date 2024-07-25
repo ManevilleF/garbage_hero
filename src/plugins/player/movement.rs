@@ -18,7 +18,12 @@ impl Plugin for PlayerMovementPlugin {
                     .run_if(in_state(GameState::Running)),
             );
         #[cfg(feature = "debug")]
-        app.add_systems(PostUpdate, draw_gizmos);
+        app.add_systems(
+            PostUpdate,
+            draw_gizmos
+                .after(avian3d::prelude::PhysicsSet::Sync)
+                .before(TransformSystem::TransformPropagate),
+        );
     }
 }
 
