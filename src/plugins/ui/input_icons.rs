@@ -1,19 +1,32 @@
 use bevy::{prelude::*, utils::HashMap};
 use leafwing_input_manager::prelude::*;
 
-use crate::plugins::player::PlayerInputAction;
+use crate::plugins::player::{GameController, PlayerInputAction};
 
 const NOT_FOUND_ICON: &str = "kenney_input-prompts/Flairs/flair_disabled.png";
 const NO_INPUT_ICON: &str = "kenney_input-prompts/Flairs/flair_disabled_cross.png";
+const MOUSE_ICON: &str = "kenney_input-prompts/Keyboard&Mouse/mouse_small.png";
+const CONTROLLER_ICON: &str = "kenney_input-prompts/Xbox/controller_xboxseries.png";
 
-#[derive(Component, Debug, Deref, Clone)]
-pub struct InputMapIcons(HashMap<PlayerInputAction, Handle<Image>>);
+#[derive(Component, Debug, Clone)]
+pub struct InputMapIcons {
+    pub controller_icon: Handle<Image>,
+    pub input_icons: HashMap<PlayerInputAction, Handle<Image>>,
+}
 
 impl InputMapIcons {
-    pub fn new(map: &InputMap<PlayerInputAction>, server: &AssetServer) -> Self {
+    pub fn new(
+        map: &InputMap<PlayerInputAction>,
+        controller: &GameController,
+        server: &AssetServer,
+    ) -> Self {
         let not_found_handle = server.load(NOT_FOUND_ICON);
         let not_input_handle = server.load(NO_INPUT_ICON);
-        let images = map
+        let controller_icon = server.load(match controller {
+            GameController::KeyBoard => MOUSE_ICON,
+            GameController::Gamepad(_) => CONTROLLER_ICON,
+        });
+        let input_icons = map
             .iter()
             .map(|(action, input)| {
                 let icon = if input.is_empty() {
@@ -26,7 +39,10 @@ impl InputMapIcons {
                 (*action, icon)
             })
             .collect();
-        Self(images)
+        Self {
+            controller_icon,
+            input_icons,
+        }
     }
 }
 

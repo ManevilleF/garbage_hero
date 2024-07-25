@@ -6,7 +6,12 @@ edition = "2021"
 [features]
 default = []
 debug_physics = ["avian3d/debug-plugin"]
-debug = ["bevy_egui", "bevy-inspector-egui", "bevy/file_watcher"]
+debug = [
+    "bevy_egui",
+    "bevy-inspector-egui",
+    "bevy/file_watcher",
+    "bevy/bevy_dev_tools",
+]
 editor = [
     "debug",
     "leafwing-input-manager/egui",
@@ -43,7 +48,6 @@ features = ["3d"]
 [dependencies.bevy]
 version = "0.14"
 
-# EDITOR DEPS
 [dependencies.bevy-inspector-egui]
 version = "0.25"
 features = ["highlight_changes"]

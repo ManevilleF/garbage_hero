@@ -34,7 +34,7 @@ pub struct GameCamera;
 
 #[derive(SystemParam)]
 pub struct CameraParams<'w, 's> {
-    pub camera: Query<'w, 's, (&'static GlobalTransform, &'static Camera)>,
+    pub camera: Query<'w, 's, (&'static GlobalTransform, &'static Camera), With<GameCamera>>,
     pub window: Query<'w, 's, &'static Window, With<PrimaryWindow>>,
 }
 
@@ -66,6 +66,7 @@ pub fn spawn_camera(mut commands: Commands) {
         ScreenSpaceAmbientOcclusionBundle::default(),
         Name::new("Game Camera"),
         GameCamera,
+        IsDefaultUiCamera,
         #[cfg(feature = "editor")]
         transform_gizmo_bevy::GizmoCamera,
     ));

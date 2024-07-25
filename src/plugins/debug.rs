@@ -1,7 +1,7 @@
-use bevy::{asset::AssetEvents, prelude::*, reflect::Typed, utils::HashMap, window::PrimaryWindow};
+use bevy::{dev_tools::ui_debug_overlay::UiDebugOptions, prelude::*, utils::HashMap};
 use bevy_egui::{
-    egui::{self, ColorImage, Widget},
-    EguiContext, EguiContexts,
+    egui::{self, Widget},
+    EguiContexts,
 };
 use strum::IntoEnumIterator;
 
@@ -23,10 +23,18 @@ impl Plugin for DebugPlugin {
         app.add_plugins((
             bevy_egui::EguiPlugin,
             bevy_inspector_egui::DefaultInspectorConfigPlugin,
+            bevy::dev_tools::ui_debug_overlay::DebugUiPlugin,
         ))
         .init_resource::<ImageToEgui>()
-        .add_systems(Update, (update_images, commands_ui, players_ui));
+        .add_systems(Update, (update_images, commands_ui, players_ui, debug_ui));
     }
+}
+
+fn debug_ui(mut context: EguiContexts, mut ui_opts: ResMut<UiDebugOptions>) {
+    let ctx = context.ctx_mut();
+    egui::Window::new("Debug").show(ctx, |ui| {
+        ui.checkbox(&mut ui_opts.enabled, "Debug Ui Overlay");
+    });
 }
 
 fn commands_ui(
@@ -94,7 +102,9 @@ fn update_images(
     mut context: EguiContexts,
 ) {
     for icons in &new_icons {
-        for handle in icons.values() {
+        let texture = context.add_image(icons.controller_icon.clone_weak());
+        images.0.insert(icons.controller_icon.clone_weak(), texture);
+        for handle in icons.input_icons.values() {
             let texture = context.add_image(handle.clone_weak());
             images.0.insert(handle.clone_weak(), texture);
         }
@@ -105,54 +115,71 @@ fn players_ui(
     mut player_connected_evw: EventWriter<PlayerConnected>,
     mut context: EguiContexts,
     textures: Res<ImageToEgui>,
-    players: Query<(&Player, &ActiveSkill, &SkillState, &Health, &InputMapIcons)>,
+    mut players: Query<(
+        &Player,
+        &ActiveSkill,
+        &SkillState,
+        &mut Health,
+        &InputMapIcons,
+    )>,
 ) {
     let ctx = context.ctx_mut();
     let mut player_count = 0_usize;
     egui::Window::new("Players").show(ctx, |ui| {
-        for (player, skill, state, health, icons) in &players {
-            egui::Grid::new(format!("Player {} Grid", player.id)).show(ui, |ui| {
-                ui.label(format!("{}", player.id));
-                ui.label(format!("{}", player.controller));
-                ui.end_row();
-                ui.label("Health");
-                ui.label(format!("{}", health.current));
-                ui.end_row();
-                ui.label("Skill");
-                if let Some(skill) = skill.active {
-                    ui.label(format!("{}", skill));
-                }
-                ui.end_row();
-            });
-            egui::CollapsingHeader::new("Skills")
-                .id_source(format!("Skills {}", player.id))
-                .show(ui, |ui| {
-                    egui::Grid::new("cooldowns").show(ui, |ui| {
-                        for (skill, cooldown) in &state.cooldowns {
-                            ui.label(format!("{}", skill));
-                            ui.label(format!("{}", *cooldown));
-                            ui.end_row();
-                        }
-                    });
+        egui::ScrollArea::vertical().show(ui, |ui| {
+            for (player, skill, state, mut health, icons) in &mut players {
+                egui::Grid::new(format!("Player {} Grid", player.id)).show(ui, |ui| {
+                    ui.label(format!("{}", player.id));
+                    ui.label(format!("{}", player.controller));
+                    ui.end_row();
+                    ui.label("Health");
+                    egui::DragValue::new(&mut health.current).ui(ui);
+                    ui.end_row();
+                    ui.label("Skill");
+                    if let Some(skill) = skill.active {
+                        ui.label(format!("{}", skill));
+                    }
+                    ui.end_row();
                 });
-            egui::CollapsingHeader::new("Icons")
-                .id_source(format!("Icons {}", player.id))
-                .show(ui, |ui| {
-                    egui::Grid::new("icons").show(ui, |ui| {
-                        for (input, icon) in icons.iter() {
-                            ui.label(format!("{input:?}"));
-                            if let Some(texture) = textures.0.get(icon) {
+                egui::CollapsingHeader::new("Skills")
+                    .id_source(format!("Skills {}", player.id))
+                    .show(ui, |ui| {
+                        egui::Grid::new("cooldowns").show(ui, |ui| {
+                            for (skill, cooldown) in &state.cooldowns {
+                                ui.label(format!("{}", skill));
+                                ui.label(format!("{}", *cooldown));
+                                ui.end_row();
+                            }
+                        });
+                    });
+                egui::CollapsingHeader::new("Icons")
+                    .id_source(format!("Icons {}", player.id))
+                    .show(ui, |ui| {
+                        egui::Grid::new("icons").show(ui, |ui| {
+                            ui.label("Controller");
+
+                            if let Some(texture) = textures.0.get(&icons.controller_icon) {
                                 ui.add(egui::widgets::Image::new(egui::load::SizedTexture::new(
                                     *texture,
                                     [48.0, 48.0],
                                 )));
                             }
+
                             ui.end_row();
-                        }
+                            for (input, icon) in icons.input_icons.iter() {
+                                ui.label(format!("{input:?}"));
+                                if let Some(texture) = textures.0.get(icon) {
+                                    ui.add(egui::widgets::Image::new(
+                                        egui::load::SizedTexture::new(*texture, [48.0, 48.0]),
+                                    ));
+                                }
+                                ui.end_row();
+                            }
+                        });
                     });
-                });
-            player_count += 1;
-        }
+                player_count += 1;
+            }
+        });
         ui.spacing();
         if ui.button("Spawn fake player").clicked() {
             player_connected_evw.send(PlayerConnected(Player {

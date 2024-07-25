@@ -50,7 +50,7 @@ pub struct PlayerInputBundle {
 impl PlayerInputBundle {
     pub fn new(controller: GameController, server: &AssetServer) -> Self {
         let map = PlayerInputAction::input_map(controller);
-        let icons = InputMapIcons::new(&map, server);
+        let icons = InputMapIcons::new(&map, &controller, server);
         Self {
             input: InputManagerBundle::with_map(map),
             icons,

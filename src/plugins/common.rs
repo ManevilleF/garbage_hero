@@ -46,6 +46,10 @@ impl Health {
         self.max += amount;
         self.heal(amount);
     }
+
+    pub fn percent(&self) -> f32 {
+        (self.current as f32 / self.max as f32)
+    }
 }
 
 #[derive(Debug, Component, Reflect)]

@@ -10,6 +10,7 @@ mod assets;
 mod input;
 mod movement;
 mod skills;
+mod ui;
 
 use assets::{PlayerAimMarkerBundle, PlayerAssets, PlayerVisualsBundle, PlayerVisualsPlugin};
 pub use input::{GameController, PlayerInputAction};
@@ -17,6 +18,7 @@ use input::{PlayerInputBundle, PlayerInputPlugin};
 use movement::{PlayerMovementBundle, PlayerMovementPlugin};
 pub use skills::{ActiveSkill, PlayerSkill, SkillState};
 use skills::{PlayerSkillsBundle, PlayerSkillsPlugin};
+use ui::PlayerUiPlugin;
 
 const MAX_PLAYERS: u8 = 24;
 const PLAYER_RADIUS: f32 = 0.8;
@@ -33,6 +35,7 @@ impl Plugin for PlayerPlugin {
             PlayerInputPlugin,
             PlayerMovementPlugin,
             PlayerSkillsPlugin,
+            PlayerUiPlugin,
         ))
         .add_event::<PlayerConnected>()
         .register_type::<Player>()
