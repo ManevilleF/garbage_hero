@@ -20,7 +20,7 @@ pub use skills::{ActiveSkill, PlayerSkill, SkillState};
 use skills::{PlayerSkillsBundle, PlayerSkillsPlugin};
 use ui::PlayerUiPlugin;
 
-const MAX_PLAYERS: u8 = 24;
+const MAX_PLAYERS: u8 = 12;
 const PLAYER_RADIUS: f32 = 0.8;
 const PLAYER_HEIGHT: f32 = 1.5;
 const BASE_PLAYER_HEALTH: u16 = 500;

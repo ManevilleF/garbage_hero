@@ -19,7 +19,7 @@ fn setup(mut commands: Commands) {
     // Light
     commands.spawn((
         DirectionalLightBundle {
-            transform: Transform::from_xyz(10.0, 50.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
+            transform: Transform::from_xyz(-15.0, 50.0, -15.0).looking_at(Vec3::ZERO, Vec3::Y),
             directional_light: DirectionalLight {
                 illuminance: light_consts::lux::AMBIENT_DAYLIGHT,
                 shadows_enabled: true,

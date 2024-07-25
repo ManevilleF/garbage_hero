@@ -55,6 +55,8 @@ pub fn run() -> AppExit {
         AutoGenerateOutlineNormalsPlugin,
         TemporalAntiAliasPlugin,
     ))
+    // Physics config
+    .insert_resource(SubstepCount(4))
     // Custom
     .add_plugins((
         LightPlugin,

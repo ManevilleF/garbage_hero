@@ -25,7 +25,14 @@ impl Plugin for ItemBuildsPlugin {
 
 #[derive(Clone, Asset, TypePath, Debug)]
 pub struct ItemBuild {
-    items: Vec<(GarbageItem, Vec2)>,
+    items: Vec<ItemSlot>,
+}
+
+#[derive(Clone, Debug)]
+struct ItemSlot {
+    pub item: GarbageItem,
+    pub position: Vec3,
+    pub y_angle: f32,
 }
 
 impl ItemBuild {
@@ -37,7 +44,11 @@ impl ItemBuild {
         for (y, layer) in layers {
             for (x, c) in layer.chars().enumerate() {
                 if let Some(item) = GarbageItem::from_char(c) {
-                    items.push((item, Vec2::new(x as f32, y as f32)));
+                    items.push(ItemSlot {
+                        item,
+                        position: Vec3::new(x as f32, y as f32 + 0.5, 0.0),
+                        y_angle: 0.0,
+                    });
                 }
             }
         }
@@ -53,11 +64,12 @@ impl ItemBuild {
             let bundles: Vec<_> = self
                 .items
                 .iter()
-                .map(|(item, pos)| {
-                    let pos = Vec3::new(pos.x * 1.01, pos.y * 1.01, 0.0);
-                    let mut bundle = GarbageBundle::new(*item, assets);
+                .map(|slot| {
+                    let pos = slot.position * 1.05;
+                    let mut bundle = GarbageBundle::new(slot.item, assets);
                     bundle.pbr.transform.translation = transform.transform_point(pos);
-                    bundle.pbr.transform.rotation = transform.rotation;
+                    bundle.pbr.transform.rotation =
+                        transform.rotation * Quat::from_rotation_y(slot.y_angle);
                     bundle
                 })
                 .collect();
