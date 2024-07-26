@@ -13,7 +13,7 @@ pub use body::{GarbageBody, GarbageBodyPlugin};
 
 pub use builds::{AvailableItemBuilds, SpawnBuild};
 pub use collected::Collected;
-pub use collector::{Collector, CollectorBundle, CollectorParticlesBundle};
+pub use collector::{Collector, CollectorBundle, CollectorConfig, CollectorParticlesBundle};
 pub use distribution::{DistributionShape, PointDistribution};
 pub use items::{GarbageAssets, GarbageBundle, GarbageItem};
 pub use throw::ThrownItem;
@@ -21,7 +21,6 @@ pub use throw::ThrownItem;
 use builds::ItemBuildsPlugin;
 use collected::CollectedPlugin;
 use collector::CollectorPlugin;
-use distribution::*;
 use rand::{seq::IteratorRandom, thread_rng, Rng};
 use strum::IntoEnumIterator;
 use throw::ThrowPlugin;

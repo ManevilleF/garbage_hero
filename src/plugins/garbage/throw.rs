@@ -6,7 +6,7 @@ use bevy::{
 };
 use bevy_mod_outline::{OutlineBundle, OutlineVolume};
 
-use super::{Collected, Collector};
+use super::{collector::CollectorConfig, Collected};
 
 pub struct ThrowPlugin;
 
@@ -31,11 +31,11 @@ impl Component for ThrownItem {
         hooks
             .on_add(|mut world, entity, _| {
                 let thrown = world.get::<Self>(entity).unwrap();
-                let Some(collector) = world.get::<Collector>(thrown.collector_entity) else {
-                    log::error!("Thrown entity {entity:?} collector does not exist");
+                let Some(config) = world.get::<CollectorConfig>(thrown.collector_entity) else {
+                    log::error!("Thrown entity {entity:?} collector config does not exist");
                     return;
                 };
-                let color = collector.color;
+                let color = config.color;
                 let mut commands = world.commands();
                 commands.entity(entity).insert(OutlineBundle {
                     outline: OutlineVolume {

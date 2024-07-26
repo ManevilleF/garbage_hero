@@ -6,7 +6,7 @@ use strum::{Display, EnumIter, IntoEnumIterator};
 use crate::{
     plugins::{
         camera::CameraParams,
-        garbage::{Collector, DistributionShape},
+        garbage::{Collector, CollectorConfig, DistributionShape},
     },
     GameState,
 };
@@ -200,11 +200,11 @@ fn update_skills(
 
 fn collector_skills(
     players: Query<(&Children, &ActiveSkill), (With<Player>, Changed<ActiveSkill>)>,
-    mut collectors: Query<&mut Collector>,
+    mut collectors: Query<(&mut Collector, &mut CollectorConfig)>,
 ) {
     for (children, active) in &players {
         let mut collectors = collectors.iter_many_mut(children);
-        while let Some(mut collector) = collectors.fetch_next() {
+        while let Some((mut collector, mut config)) = collectors.fetch_next() {
             let shape = if active.active == Some(PlayerSkill::Defend) {
                 DistributionShape::Arc
             } else {
@@ -214,8 +214,8 @@ fn collector_skills(
                 collector.set_shape(shape);
             }
             let enabled = active.active == Some(PlayerSkill::Collect);
-            if collector.enabled != enabled {
-                collector.enabled = enabled;
+            if config.enabled != enabled {
+                config.enabled = enabled;
             }
         }
     }

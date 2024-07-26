@@ -109,7 +109,7 @@ pub fn spawn_players(
         let player_entity = commands.spawn(bundle).set_parent(root_entity).id();
 
         let collector_entity = commands
-            .spawn(CollectorBundle::new(4.0, 1.0, color))
+            .spawn(CollectorBundle::new(4.0, 1.0, color, 50))
             .set_parent(player_entity)
             .id();
         commands

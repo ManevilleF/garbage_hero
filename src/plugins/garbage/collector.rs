@@ -13,6 +13,7 @@ pub struct CollectorPlugin;
 impl Plugin for CollectorPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<Collector>()
+            .register_type::<CollectorConfig>()
             .add_systems(
                 FixedUpdate,
                 (auto_rotate, update_collected_position, collect_items)
@@ -30,11 +31,16 @@ impl Plugin for CollectorPlugin {
     }
 }
 
+#[derive(Debug, Component, Reflect)]
+#[reflect(Component)]
+pub struct CollectorConfig {
+    pub enabled: bool,
+    pub color: Color,
+}
+
 #[derive(Debug, Reflect)]
 #[reflect(Component)]
 pub struct Collector {
-    pub enabled: bool,
-    pub color: Color,
     distribution: PointDistribution,
     shape: DistributionShape,
     collected: Vec<Entity>,
@@ -61,7 +67,8 @@ impl Component for Collector {
 #[derive(Bundle)]
 pub struct CollectorBundle {
     pub spatial: SpatialBundle,
-    pub collectible_sensor: Collector,
+    pub collector: Collector,
+    pub config: CollectorConfig,
     pub collider: Collider,
     pub sensor: Sensor,
     pub layer: CollisionLayers,
@@ -69,14 +76,18 @@ pub struct CollectorBundle {
 }
 
 impl CollectorBundle {
-    pub fn new(min_radius: f32, max_distance: f32, color: Color) -> Self {
+    pub fn new(min_radius: f32, max_distance: f32, color: Color, max_items: usize) -> Self {
         Self {
             spatial: SpatialBundle::default(),
             collider: Collider::sphere(1.0),
             sensor: Sensor,
-            collectible_sensor: Collector::new(min_radius, max_distance, color),
+            collector: Collector::new(min_radius, max_distance, max_items),
             layer: CollisionLayers::new(ObjectLayer::Collector, [ObjectLayer::Collectible]),
             name: Name::new("Garbage Collector"),
+            config: CollectorConfig {
+                enabled: false,
+                color,
+            },
         }
     }
 }
@@ -110,16 +121,13 @@ impl CollectorParticlesBundle {
 impl Collector {
     const ANGULAR_SPEED: f32 = 10.0;
     const COLLECTED_SPEED: f32 = 10.0;
-    const MAX_ITEMS: usize = 75;
     const COLLECTOR_RADIUS_COEF: f32 = 1.2;
 
-    pub fn new(min_radius: f32, max_distance: f32, color: Color) -> Self {
+    pub fn new(min_radius: f32, max_distance: f32, max_items: usize) -> Self {
         Self {
-            enabled: false,
-            color,
             distribution: PointDistribution::new(min_radius, max_distance),
             shape: DistributionShape::Circle,
-            collected: Vec::with_capacity(Self::MAX_ITEMS),
+            collected: Vec::with_capacity(max_items),
         }
     }
 
@@ -153,7 +161,7 @@ impl Collector {
     }
 
     pub fn insert(&mut self, entity: Entity, dir: Option<Dir2>) -> bool {
-        if self.len() >= Self::MAX_ITEMS {
+        if self.len() >= self.collected.capacity() {
             return false;
         }
         match dir.and_then(|d| self.distribution.find_closest_aligned_point(d)) {
@@ -225,10 +233,10 @@ fn update_particles(
         &mut EffectProperties,
         &CollectorParticles,
     )>,
-    collectors: Query<(&GlobalTransform, Ref<Collector>)>,
+    collectors: Query<(&GlobalTransform, Ref<Collector>, &CollectorConfig)>,
 ) {
     for (mut tr, mut spawner, mut properties, target) in &mut particles {
-        let Ok((gtr, collector)) = collectors.get(target.0) else {
+        let Ok((gtr, collector, config)) = collectors.get(target.0) else {
             log::error!("Collector particles target is invalid");
             continue;
         };
@@ -236,7 +244,7 @@ fn update_particles(
         if !collector.is_changed() {
             continue;
         }
-        spawner.set_active(collector.enabled);
+        spawner.set_active(config.enabled);
         properties.set("radius", collector.radius().into());
     }
 }
@@ -283,11 +291,11 @@ fn auto_rotate(time: Res<Time>, mut collectors: Query<(&GlobalTransform, &mut Co
 
 fn collect_items(
     mut commands: Commands,
-    collectors: Query<(Entity, &CollidingEntities, &Collector)>,
+    collectors: Query<(Entity, &CollidingEntities, &CollectorConfig), With<Collector>>,
     items: Query<Entity, (With<GarbageItem>, Without<Collected>, Without<ThrownItem>)>,
 ) {
-    for (collector_entity, collision, collector) in &collectors {
-        if !collector.enabled {
+    for (collector_entity, collision, config) in &collectors {
+        if !config.enabled {
             continue;
         }
         for item in items.iter_many(&collision.0) {
