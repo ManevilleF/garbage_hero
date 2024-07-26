@@ -1,5 +1,5 @@
 use avian3d::prelude::Collider;
-use bevy::{color::palettes::css::RED, prelude::*};
+use bevy::prelude::*;
 
 #[derive(Resource)]
 pub struct EnemyAssets {
@@ -15,8 +15,7 @@ impl FromWorld for EnemyAssets {
 
         let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
         let worm_head_mat = materials.add(StandardMaterial {
-            base_color: Color::Srgba(RED),
-            emissive: LinearRgba::rgb(20.0, 0.0, 5.0),
+            base_color: Color::BLACK,
             unlit: true,
             ..default()
         });

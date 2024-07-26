@@ -164,7 +164,7 @@ impl CollectorParticlesBundle {
 
 impl Collector {
     const ANGULAR_SPEED: f32 = 10.0;
-    const COLLECTED_SPEED: f32 = 2.0;
+    const COLLECTED_SPEED: f32 = 10.0;
     const COLLECTOR_RADIUS_COEF: f32 = 1.2;
 
     pub fn fixed(
@@ -311,7 +311,9 @@ pub fn update_radius(mut collectors: Query<(&mut Transform, &Collector), Changed
 }
 
 fn update_particles(
+    mut commands: Commands,
     mut particles: Query<(
+        Entity,
         &mut Transform,
         &mut EffectSpawner,
         &mut EffectProperties,
@@ -319,9 +321,11 @@ fn update_particles(
     )>,
     collectors: Query<(&GlobalTransform, Ref<Collector>, &CollectorConfig)>,
 ) {
-    for (mut tr, mut spawner, mut properties, target) in &mut particles {
+    for (entity, mut tr, mut spawner, mut properties, target) in &mut particles {
         let Ok((gtr, collector, config)) = collectors.get(target.0) else {
             log::error!("Collector particles target is invalid");
+            spawner.set_active(false);
+            commands.entity(entity).despawn();
             continue;
         };
         tr.translation = gtr.translation();

@@ -12,7 +12,7 @@ mod movement;
 use assets::EnemyAssets;
 use movement::{EnemyMovement, EnemyMovementPlugin};
 
-const BASE_HEALTH: u16 = u16::MAX;
+const BASE_HEALTH: u16 = 50;
 const BASE_DAMAGE: u16 = 10;
 
 use super::{Damage, Health};
@@ -89,7 +89,7 @@ impl EnemyCollectorBundle {
                 items_per_point,
                 ObjectLayer::Enemy,
             ),
-            body: GarbageBody::new(size, Vec3::ZERO, 2.0, 1.0),
+            body: GarbageBody::new(size, Vec3::ZERO, 2.0, 0.0),
         }
     }
 }

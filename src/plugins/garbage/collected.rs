@@ -76,13 +76,10 @@ impl Component for Collected {
                     log::error!("on_remove hook triggered for {entity:?} without `Collected`");
                     return;
                 };
-                let Some(mut collector) = world.get_mut::<Collector>(collected.collector_entity)
-                else {
-                    log::error!("Cannot find collector of `Collected` entity {entity:?}");
-                    return;
+                if let Some(mut collector) = world.get_mut::<Collector>(collected.collector_entity)
+                {
+                    collector.remove(entity);
                 };
-                // Can be already removed
-                collector.remove(entity);
 
                 let Some(mut layer) = world.get_mut::<CollisionLayers>(entity) else {
                     log::error!("on_add hook triggered for {entity:?} without `CollisionLayers`");

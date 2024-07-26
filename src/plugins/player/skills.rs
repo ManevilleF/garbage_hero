@@ -52,7 +52,7 @@ impl PlayerSkill {
         match self {
             Self::Collect => 0.0,
             Self::Shoot => 0.05,
-            Self::Dash => 1.0,
+            Self::Dash => 0.5,
             Self::Defend => 0.0,
             Self::Burst => 10.0,
         }
