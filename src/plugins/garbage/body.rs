@@ -1,4 +1,4 @@
-use std::f32::consts::FRAC_PI_2;
+use std::f32::consts::PI;
 
 use bevy::prelude::*;
 
@@ -119,7 +119,7 @@ pub struct GarbageBody {
 impl GarbageBody {
     pub fn new(amount: usize, pos: Vec3, radius: f32, offset: f32) -> Self {
         Self {
-            dorsal: Chain::new(amount, pos, radius, FRAC_PI_2, 1.0),
+            dorsal: Chain::new(amount, pos, radius, PI, 1.0),
             offset,
         }
     }

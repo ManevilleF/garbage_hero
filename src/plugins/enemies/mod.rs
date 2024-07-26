@@ -1,3 +1,5 @@
+use std::f32::consts::{FRAC_PI_2, PI};
+
 use super::{
     garbage::{CollectorBundle, GarbageBody},
     ParticleConfig,
@@ -10,7 +12,7 @@ mod assets;
 mod movement;
 
 use assets::EnemyAssets;
-use movement::{EnemyMovement, EnemyMovementPlugin, EnemyMovementState};
+use movement::{EnemyMovement, EnemyMovementPlugin, EnemyMovementState, PlayerDetector};
 
 const BASE_HEALTH: u16 = 50;
 const BASE_DAMAGE: u16 = 10;
@@ -87,19 +89,47 @@ impl EnemyCollectorBundle {
                 items_per_point,
                 ObjectLayer::Enemy,
             ),
-            body: GarbageBody::new(size, Vec3::ZERO, 2.0, 0.0),
+            body: GarbageBody::new(size, Vec3::ZERO, 2.5, -1.0),
+        }
+    }
+}
+
+#[derive(Bundle)]
+pub struct PlayerDetectorBundle {
+    pub spatial: SpatialBundle,
+    pub sensor: Sensor,
+    pub collider: Collider,
+    pub layers: CollisionLayers,
+    pub detector: PlayerDetector,
+}
+
+impl PlayerDetectorBundle {
+    pub fn new() -> Self {
+        Self {
+            spatial: SpatialBundle {
+                transform: Transform::from_xyz(0.0, 0.0, 5.0)
+                    .with_rotation(Quat::from_rotation_y(PI) * Quat::from_rotation_x(FRAC_PI_2)),
+                ..default()
+            },
+            sensor: Sensor,
+            collider: Collider::cone(15.0, 15.0),
+            layers: CollisionLayers::new(ObjectLayer::Enemy, ObjectLayer::Player),
+            detector: PlayerDetector::default(),
         }
     }
 }
 
 fn spawn_enemy(mut commands: Commands, assets: Res<EnemyAssets>, particles: Res<ParticleConfig>) {
-    const SIZE: usize = 10;
+    const SIZE: usize = 15;
     let enemy = commands
         .spawn(EnemyBundle::new(Vec3::Y * 2.0, &assets, SIZE))
         .id();
     let mut collector_bundle = EnemyCollectorBundle::new(SIZE, Color::BLACK, 4);
     collector_bundle.collector.config.enabled = true;
     let collector = commands.spawn(collector_bundle).set_parent(enemy).id();
+    commands
+        .spawn(PlayerDetectorBundle::new())
+        .set_parent(enemy);
     commands.spawn(CollectorParticlesBundle::new(
         collector,
         Color::BLACK,
