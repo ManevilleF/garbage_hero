@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use super::body::Body;
+use crate::plugins::garbage::GarbageBody;
 
 pub struct EnemyMovementPlugin;
 
@@ -19,7 +19,7 @@ pub struct EnemyMovement {
     pub spawn_position: Vec3,
 }
 
-fn move_enemy(mut enemies: Query<(&mut Transform, &EnemyMovement, &Body)>, time: Res<Time>) {
+fn move_enemy(mut enemies: Query<(&mut Transform, &EnemyMovement, &GarbageBody)>, time: Res<Time>) {
     let elapsed = time.elapsed_seconds();
     for (mut transform, movement, body) in &mut enemies {
         let elapsed_time = elapsed + movement.time_offset;

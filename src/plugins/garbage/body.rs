@@ -2,11 +2,13 @@ use std::f32::consts::FRAC_PI_2;
 
 use bevy::prelude::*;
 
-pub struct EnemyBodyPlugin;
+use crate::plugins::garbage::{DistributionShape, PointDistribution};
 
-impl Plugin for EnemyBodyPlugin {
+pub struct GarbageBodyPlugin;
+
+impl Plugin for GarbageBodyPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<Body>()
+        app.register_type::<GarbageBody>()
             .add_systems(FixedUpdate, update_bodies);
 
         #[cfg(feature = "debug")]
@@ -19,7 +21,7 @@ impl Plugin for EnemyBodyPlugin {
     }
 }
 
-#[derive(Debug, Copy, Clone, Reflect)]
+#[derive(Debug, Reflect)]
 struct Point {
     position: Vec3,
     direction: Dir3,
@@ -52,27 +54,24 @@ impl Chain {
         }
 
         for i in 1..len {
-            let prev_point = self.points[i - 1];
+            let prev_pos = self.points[i - 1].position;
+            let prev_dir = self.points[i - 1].direction;
             let current_point = &mut self.points[i];
-            let direction =
-                Dir3::new(current_point.position - prev_point.position).unwrap_or(Dir3::Z);
+            let direction = Dir3::new(current_point.position - prev_pos).unwrap_or(Dir3::Z);
             let distance = self.point_radius;
 
             // Apply distance constraint
-            current_point.position = prev_point.position + direction * distance;
+            current_point.position = prev_pos + direction * distance;
             current_point.direction = direction;
 
             // Apply angle constraint
-            let mut angle = prev_point.direction.angle_between(*direction);
+            let mut angle = prev_dir.angle_between(*direction);
             if angle.abs() > self.max_angle {
                 angle = self.max_angle * angle.signum();
-                let rotation = Quat::from_axis_angle(
-                    direction.cross(*prev_point.direction).normalize(),
-                    angle,
-                );
+                let rotation = Quat::from_axis_angle(direction.cross(*prev_dir).normalize(), angle);
                 current_point.direction = Dir3::new(rotation * *current_point.direction)
                     .unwrap_or(current_point.direction);
-                current_point.position = prev_point.position + current_point.direction * distance;
+                current_point.position = prev_pos + current_point.direction * distance;
             }
 
             // Ensure no point falls below MIN_Y
@@ -111,13 +110,13 @@ impl Chain {
 
 #[derive(Component, Reflect)]
 #[reflect(Component)]
-pub struct Body {
+pub struct GarbageBody {
     // Anchored to Transform translation
     pub dorsal: Chain,
     pub offset: f32,
 }
 
-impl Body {
+impl GarbageBody {
     pub fn new(amount: usize, pos: Vec3, radius: f32) -> Self {
         Self {
             dorsal: Chain::new(amount, pos, radius, FRAC_PI_2, 1.0),
@@ -126,7 +125,7 @@ impl Body {
     }
 }
 
-fn update_bodies(mut bodies: Query<(&GlobalTransform, &mut Body)>) {
+fn update_bodies(mut bodies: Query<(&GlobalTransform, &mut GarbageBody)>) {
     for (gtr, mut body) in &mut bodies {
         let forward = gtr.forward();
         body.dorsal.points[0].position = gtr.translation() + forward * body.offset;
@@ -136,7 +135,7 @@ fn update_bodies(mut bodies: Query<(&GlobalTransform, &mut Body)>) {
 }
 
 #[cfg(feature = "debug")]
-fn draw_gizmos(mut gizmos: Gizmos, bodies: Query<&Body>) {
+fn draw_gizmos(mut gizmos: Gizmos, bodies: Query<&GarbageBody>) {
     for body in &bodies {
         // dorsal
         for point in &body.dorsal.points {

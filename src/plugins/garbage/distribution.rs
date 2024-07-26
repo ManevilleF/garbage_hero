@@ -48,7 +48,7 @@ fn rotated_point(point: &Vec2, angle: f32) -> Vec2 {
 ///
 /// This struct allows for the generation and retrieval of points distributed
 /// evenly in an oriented circle.
-#[derive(Debug, Component, Reflect)]
+#[derive(Debug, Reflect)]
 pub struct PointDistribution {
     /// The minimum radius of the circle .
     pub min_radius: f32,

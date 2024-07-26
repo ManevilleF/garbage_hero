@@ -1,13 +1,12 @@
+use super::garbage::GarbageBody;
 use crate::ObjectLayer;
 use avian3d::prelude::*;
 use bevy::prelude::*;
 
 mod assets;
-mod body;
 mod movement;
 
 use assets::EnemyAssets;
-use body::{Body, EnemyBodyPlugin};
 use movement::{EnemyMovement, EnemyMovementPlugin};
 
 const BASE_HEALTH: u16 = 50;
@@ -19,7 +18,7 @@ pub struct EnemiesPlugin;
 
 impl Plugin for EnemiesPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((EnemyBodyPlugin, EnemyMovementPlugin))
+        app.add_plugins(EnemyMovementPlugin)
             .init_resource::<EnemyAssets>()
             .register_type::<Enemy>();
 
@@ -42,7 +41,7 @@ pub struct EnemyBundle {
     pub health: Health,
     pub damage: Damage,
     pub name: Name,
-    pub body: Body,
+    pub body: GarbageBody,
 }
 
 impl EnemyBundle {
@@ -67,7 +66,7 @@ impl EnemyBundle {
             health: Health::new(BASE_HEALTH),
             damage: Damage(BASE_DAMAGE),
             name: Name::new("Worm"),
-            body: Body::new(size, pos, 1.0),
+            body: GarbageBody::new(size, pos, 1.0),
         }
     }
 }

@@ -1,6 +1,7 @@
 use bevy::{ecs::world::Command, prelude::*};
 use std::f32::consts::PI;
 
+mod body;
 mod builds;
 mod collected;
 mod collector;
@@ -8,10 +9,12 @@ mod distribution;
 mod items;
 mod throw;
 
+pub use body::{GarbageBody, GarbageBodyPlugin};
+
 pub use builds::{AvailableItemBuilds, SpawnBuild};
 pub use collected::Collected;
 pub use collector::{Collector, CollectorBundle, CollectorParticlesBundle};
-pub use distribution::DistributionShape;
+pub use distribution::{DistributionShape, PointDistribution};
 pub use items::{GarbageAssets, GarbageBundle, GarbageItem};
 pub use throw::ThrownItem;
 
@@ -32,6 +35,7 @@ impl Plugin for GarbagePlugin {
             CollectorPlugin,
             ItemBuildsPlugin,
             ThrowPlugin,
+            GarbageBodyPlugin,
         ))
         .init_resource::<GarbageAssets>()
         .register_type::<GarbageAssets>()
