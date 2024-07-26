@@ -124,6 +124,10 @@ impl GarbageBody {
         }
     }
 
+    pub fn full_length(&self) -> f32 {
+        self.dorsal.len() as f32 * self.dorsal.point_radius
+    }
+
     pub fn compute_3d_positions(&self, len: usize, distribution: &PointDistribution) -> Vec<Vec3> {
         let mut res = Vec::with_capacity(len);
         let mut i = 0_usize;

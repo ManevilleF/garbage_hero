@@ -89,7 +89,7 @@ impl ParticleConfig {
     fn collector_effect() -> EffectAsset {
         let mut size_gradient = Gradient::new();
         size_gradient.add_key(0.0, Vec2::new(0.0, 0.0));
-        size_gradient.add_key(0.3, Vec2::new(1.0, 0.08));
+        size_gradient.add_key(0.3, Vec2::new(1.0, 0.05));
         size_gradient.add_key(1.0, Vec2::splat(0.0));
 
         let writer = ExprWriter::new();
@@ -112,7 +112,7 @@ impl ParticleConfig {
         let init_age = SetAttributeModifier::new(Attribute::AGE, age);
 
         // Give a bit of variation by randomizing the lifetime per particle
-        let lifetime = writer.lit(1.0).uniform(writer.lit(1.5)).expr();
+        let lifetime = writer.lit(1.0).expr();
         let init_lifetime = SetAttributeModifier::new(Attribute::LIFETIME, lifetime);
 
         let init_tangent = SetVelocityTangentModifier {

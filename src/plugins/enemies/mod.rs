@@ -10,7 +10,7 @@ mod assets;
 mod movement;
 
 use assets::EnemyAssets;
-use movement::{EnemyMovement, EnemyMovementPlugin};
+use movement::{EnemyMovement, EnemyMovementPlugin, EnemyMovementState};
 
 const BASE_HEALTH: u16 = 50;
 const BASE_DAMAGE: u16 = 10;
@@ -37,6 +37,7 @@ pub struct EnemyBundle {
     pub pbr: PbrBundle,
     pub enemy: Enemy,
     pub movement: EnemyMovement,
+    pub state: EnemyMovementState,
     pub rigidbody: RigidBody,
     pub collider: Collider,
     pub layers: CollisionLayers,
@@ -56,11 +57,7 @@ impl EnemyBundle {
                 ..default()
             },
             enemy: Enemy,
-            movement: EnemyMovement {
-                time_offset: 0.0,
-                speed: (size * 2) as f32,
-                spawn_position: pos,
-            },
+            movement: EnemyMovement::new((size * 2) as f32, pos),
             rigidbody: RigidBody::Kinematic,
             scale: GravityScale(0.0),
             collider: assets.worm_head_collider.clone(),
@@ -68,6 +65,7 @@ impl EnemyBundle {
             health: Health::new(BASE_HEALTH),
             damage: Damage(BASE_DAMAGE),
             name: Name::new("Worm"),
+            state: EnemyMovementState::default(),
         }
     }
 }
