@@ -60,10 +60,19 @@ pub struct Damage(pub u16);
 #[reflect(Component)]
 pub struct Dead;
 
-fn direct_damage(damage: Query<(&Damage, &CollidingEntities)>, mut healths: Query<&mut Health>) {
-    for (damage, collision) in &damage {
-        let mut healths = healths.iter_many_mut(&collision.0);
-        while let Some(mut health) = healths.fetch_next() {
+fn direct_damage(
+    mut events: EventReader<CollisionStarted>,
+    mut entities: Query<(Option<&Damage>, Option<&mut Health>), Or<(With<Health>, With<Damage>)>>,
+) {
+    for CollisionStarted(a, b) in events.read() {
+        let Ok([(damage_a, health_a), (damage_b, health_b)]) = entities.get_many_mut([*a, *b])
+        else {
+            continue;
+        };
+        if let Some((damage, mut health)) = damage_a.zip(health_b) {
+            health.damage(damage.0);
+        }
+        if let Some((damage, mut health)) = damage_b.zip(health_a) {
             health.damage(damage.0);
         }
     }
@@ -78,7 +87,7 @@ fn velocity_damage(
             Option<&Collected>,
             Option<&ThrownItem>,
         ),
-        (Without<Damage>, With<Collider>),
+        With<Collider>,
     >,
 ) {
     const VEL_TRESHOLD: f32 = 10.0;

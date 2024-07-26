@@ -66,6 +66,7 @@ pub fn run() -> AppExit {
         CameraPlugin,
         MapPlugin,
         ParticlesPlugin,
+        EnemiesPlugin,
     ))
     .add_systems(PostUpdate, handle_pause);
     #[cfg(feature = "debug")]

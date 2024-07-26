@@ -4,6 +4,7 @@ mod common;
 mod debug;
 #[cfg(feature = "editor")]
 mod editor;
+mod enemies;
 mod garbage;
 mod light;
 mod map;
@@ -17,6 +18,7 @@ pub use common::*;
 pub use debug::DebugPlugin;
 #[cfg(feature = "editor")]
 pub use editor::DebugEditorPlugin;
+pub use enemies::EnemiesPlugin;
 pub use garbage::GarbagePlugin;
 pub use light::LightPlugin;
 pub use map::MapPlugin;

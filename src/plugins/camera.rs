@@ -3,11 +3,8 @@ use std::ops::DerefMut;
 use super::player::Player;
 use avian3d::prelude::PhysicsSet;
 use bevy::{
-    core_pipeline::{bloom::BloomSettings, tonemapping::Tonemapping},
-    ecs::system::SystemParam,
-    pbr::ScreenSpaceAmbientOcclusionBundle,
-    prelude::*,
-    render::camera::ScalingMode,
+    core_pipeline::tonemapping::Tonemapping, ecs::system::SystemParam,
+    pbr::ScreenSpaceAmbientOcclusionBundle, prelude::*, render::camera::ScalingMode,
     window::PrimaryWindow,
 };
 
@@ -62,10 +59,9 @@ pub fn spawn_camera(mut commands: Commands) {
                 near: -100.0,
                 ..default()
             }),
-            tonemapping: Tonemapping::AcesFitted,
+            tonemapping: Tonemapping::TonyMcMapface,
             ..default()
         },
-        BloomSettings::default(),
         ScreenSpaceAmbientOcclusionBundle::default(),
         Name::new("Game Camera"),
         GameCamera,
@@ -97,7 +93,6 @@ pub fn follow_players(
     // Translation
     let center = (max + min) / 2.0;
     let target = Vec3::new(center.x, 0.0, center.y) + CAM_OFFSET;
-    cam_tr.translation = cam_tr.translation.lerp(target, dt * CAMERA_DECAY_RATE);
     cam_tr.translation = target;
     // Projection
     let size = max - min;
