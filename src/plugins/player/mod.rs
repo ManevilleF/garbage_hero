@@ -1,4 +1,4 @@
-use crate::ParticleConfig;
+use crate::{ObjectLayer, ParticleConfig};
 
 use super::{
     common::Health,
@@ -109,7 +109,13 @@ pub fn spawn_players(
         let player_entity = commands.spawn(bundle).set_parent(root_entity).id();
 
         let collector_entity = commands
-            .spawn(CollectorBundle::new(4.0, 1.0, color, 50))
+            .spawn(CollectorBundle::growing(
+                4.0,
+                1.0,
+                color,
+                50,
+                ObjectLayer::Player,
+            ))
             .set_parent(player_entity)
             .id();
         commands

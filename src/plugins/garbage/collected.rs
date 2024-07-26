@@ -1,4 +1,4 @@
-use super::Collector;
+use super::{collector::OnCollectedFilterOut, Collector};
 use avian3d::prelude::*;
 use bevy::{
     ecs::component::{ComponentHooks, StorageType},
@@ -32,6 +32,7 @@ impl Component for Collected {
                     log::error!("on_remove hook triggered for {entity:?} without `Collected`");
                     return;
                 };
+                let collector_entity = collected.collector_entity;
                 let collected_pos = world
                     .get::<GlobalTransform>(entity)
                     .map(|gtr| gtr.translation().xz())
@@ -42,8 +43,7 @@ impl Component for Collected {
                     .unwrap();
                 let dir = Dir2::new(collected_pos - collector_pos).ok();
 
-                let Some(mut collector) = world.get_mut::<Collector>(collected.collector_entity)
-                else {
+                let Some(mut collector) = world.get_mut::<Collector>(collector_entity) else {
                     log::error!("Cannot find collector of `Collected` entity {entity:?}");
                     return;
                 };
@@ -52,12 +52,18 @@ impl Component for Collected {
                     commands.entity(entity).remove::<Self>();
                     return;
                 };
+
+                let filter_out = world
+                    .get::<OnCollectedFilterOut>(collector_entity)
+                    .map(|filter| filter.layer);
                 let Some(mut layer) = world.get_mut::<CollisionLayers>(entity) else {
                     log::error!("on_add hook triggered for {entity:?} without `CollisionLayers`");
                     return;
                 };
                 // Collected entities should no longer interact withsome things
-                layer.filters.remove(ObjectLayer::Player);
+                if let Some(filter_out) = filter_out {
+                    layer.filters.remove(filter_out);
+                }
                 layer.filters.remove(ObjectLayer::Collector);
                 let Some(mut scale) = world.get_mut::<GravityScale>(entity) else {
                     log::warn!("on_add hook triggered for {entity:?} without `GravityScale`");
@@ -83,8 +89,7 @@ impl Component for Collected {
                     return;
                 };
                 // Reset filter
-                layer.filters.add(ObjectLayer::Player);
-                layer.filters.add(ObjectLayer::Collector);
+                layer.filters = LayerMask::ALL;
 
                 // Reset gravity scale
                 let Some(mut scale) = world.get_mut::<GravityScale>(entity) else {

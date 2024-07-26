@@ -1,7 +1,5 @@
 use bevy::prelude::*;
 
-use crate::plugins::garbage::GarbageBody;
-
 pub struct EnemyMovementPlugin;
 
 impl Plugin for EnemyMovementPlugin {
@@ -19,9 +17,9 @@ pub struct EnemyMovement {
     pub spawn_position: Vec3,
 }
 
-fn move_enemy(mut enemies: Query<(&mut Transform, &EnemyMovement, &GarbageBody)>, time: Res<Time>) {
+fn move_enemy(mut enemies: Query<(&mut Transform, &EnemyMovement)>, time: Res<Time>) {
     let elapsed = time.elapsed_seconds();
-    for (mut transform, movement, body) in &mut enemies {
+    for (mut transform, movement) in &mut enemies {
         let elapsed_time = elapsed + movement.time_offset;
         let speed = movement.speed;
 
@@ -33,8 +31,7 @@ fn move_enemy(mut enemies: Query<(&mut Transform, &EnemyMovement, &GarbageBody)>
             speed * (2.0 * elapsed_time).sin() / 2.0,
         );
 
-        let coef = body.dorsal.len() as f32 * (1.0 / movement.speed);
-        let new_translation = movement.spawn_position + delta * coef;
+        let new_translation = movement.spawn_position + delta;
         if let Ok(direction) = Dir3::new(transform.translation - new_translation) {
             transform.look_to(direction, Dir3::Y);
         }

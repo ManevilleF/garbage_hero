@@ -1,5 +1,5 @@
 #![warn(clippy::all, clippy::nursery)]
-#![allow(dead_code, clippy::type_complexity)]
+#![allow(dead_code, clippy::type_complexity, clippy::option_if_let_else)]
 use avian3d::prelude::*;
 use bevy::{core_pipeline::experimental::taa::TemporalAntiAliasPlugin, prelude::*};
 use bevy_mod_outline::{
@@ -20,7 +20,7 @@ pub enum GameState {
     Pause,
 }
 
-#[derive(PhysicsLayer)]
+#[derive(PhysicsLayer, Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ObjectLayer {
     Player,
     Enemy,

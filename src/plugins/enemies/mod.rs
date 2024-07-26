@@ -1,5 +1,8 @@
-use super::garbage::GarbageBody;
-use crate::ObjectLayer;
+use super::{
+    garbage::{CollectorBundle, GarbageBody},
+    ParticleConfig,
+};
+use crate::{plugins::garbage::CollectorParticlesBundle, ObjectLayer};
 use avian3d::prelude::*;
 use bevy::prelude::*;
 
@@ -9,7 +12,7 @@ mod movement;
 use assets::EnemyAssets;
 use movement::{EnemyMovement, EnemyMovementPlugin};
 
-const BASE_HEALTH: u16 = 50;
+const BASE_HEALTH: u16 = u16::MAX;
 const BASE_DAMAGE: u16 = 10;
 
 use super::{Damage, Health};
@@ -41,7 +44,6 @@ pub struct EnemyBundle {
     pub health: Health,
     pub damage: Damage,
     pub name: Name,
-    pub body: GarbageBody,
 }
 
 impl EnemyBundle {
@@ -56,7 +58,7 @@ impl EnemyBundle {
             enemy: Enemy,
             movement: EnemyMovement {
                 time_offset: 0.0,
-                speed: 5.0,
+                speed: (size * 2) as f32,
                 spawn_position: pos,
             },
             rigidbody: RigidBody::Kinematic,
@@ -66,11 +68,43 @@ impl EnemyBundle {
             health: Health::new(BASE_HEALTH),
             damage: Damage(BASE_DAMAGE),
             name: Name::new("Worm"),
-            body: GarbageBody::new(size, pos, 1.0),
         }
     }
 }
 
-fn spawn_enemy(mut commands: Commands, assets: Res<EnemyAssets>) {
-    commands.spawn(EnemyBundle::new(Vec3::Y * 2.0, &assets, 20));
+#[derive(Bundle)]
+pub struct EnemyCollectorBundle {
+    pub collector: CollectorBundle,
+    pub body: GarbageBody,
+}
+
+impl EnemyCollectorBundle {
+    pub fn new(size: usize, color: Color, items_per_point: usize) -> Self {
+        Self {
+            collector: CollectorBundle::fixed(
+                5.0,
+                1.5,
+                color,
+                size * items_per_point,
+                items_per_point,
+                ObjectLayer::Enemy,
+            ),
+            body: GarbageBody::new(size, Vec3::ZERO, 2.0, 1.0),
+        }
+    }
+}
+
+fn spawn_enemy(mut commands: Commands, assets: Res<EnemyAssets>, particles: Res<ParticleConfig>) {
+    const SIZE: usize = 10;
+    let enemy = commands
+        .spawn(EnemyBundle::new(Vec3::Y * 2.0, &assets, SIZE))
+        .id();
+    let mut collector_bundle = EnemyCollectorBundle::new(SIZE, Color::BLACK, 4);
+    collector_bundle.collector.config.enabled = true;
+    let collector = commands.spawn(collector_bundle).set_parent(enemy).id();
+    commands.spawn(CollectorParticlesBundle::new(
+        collector,
+        Color::BLACK,
+        &particles,
+    ));
 }

@@ -78,6 +78,16 @@ impl PointDistribution {
         radius(self.min_radius, self.max_distance, amount)
     }
 
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.points.len()
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.points.is_empty()
+    }
+
     /// Updates the amount of points in the distribution, effectively updating the points caches
     ///
     /// # Arguments

@@ -1,4 +1,6 @@
-use super::{Collected, DistributionShape, GarbageItem, PointDistribution, ThrownItem};
+use super::{
+    Collected, DistributionShape, GarbageBody, GarbageItem, PointDistribution, ThrownItem,
+};
 use crate::{GameState, ObjectLayer, ParticleConfig};
 use avian3d::prelude::*;
 use bevy::{
@@ -41,9 +43,16 @@ pub struct CollectorConfig {
 #[derive(Debug, Reflect)]
 #[reflect(Component)]
 pub struct Collector {
+    min_radius: f32,
+    growing: bool,
     distribution: PointDistribution,
     shape: DistributionShape,
     collected: Vec<Entity>,
+}
+
+#[derive(Debug, Component)]
+pub struct OnCollectedFilterOut {
+    pub layer: ObjectLayer,
 }
 
 impl Component for Collector {
@@ -73,20 +82,55 @@ pub struct CollectorBundle {
     pub sensor: Sensor,
     pub layer: CollisionLayers,
     pub name: Name,
+    pub filter_out: OnCollectedFilterOut,
 }
 
 impl CollectorBundle {
-    pub fn new(min_radius: f32, max_distance: f32, color: Color, max_items: usize) -> Self {
+    pub fn fixed(
+        collector_radius: f32,
+        max_distance: f32,
+        color: Color,
+        max_items: usize,
+        max_points: usize,
+        on_collected_filter: ObjectLayer,
+    ) -> Self {
         Self {
             spatial: SpatialBundle::default(),
             collider: Collider::sphere(1.0),
             sensor: Sensor,
-            collector: Collector::new(min_radius, max_distance, max_items),
+            collector: Collector::fixed(collector_radius, max_distance, max_items, max_points),
             layer: CollisionLayers::new(ObjectLayer::Collector, [ObjectLayer::Collectible]),
             name: Name::new("Garbage Collector"),
             config: CollectorConfig {
                 enabled: false,
                 color,
+            },
+            filter_out: OnCollectedFilterOut {
+                layer: on_collected_filter,
+            },
+        }
+    }
+
+    pub fn growing(
+        min_radius: f32,
+        max_distance: f32,
+        color: Color,
+        max_items: usize,
+        on_collected_filter: ObjectLayer,
+    ) -> Self {
+        Self {
+            spatial: SpatialBundle::default(),
+            collider: Collider::sphere(1.0),
+            sensor: Sensor,
+            collector: Collector::growing(min_radius, max_distance, max_items),
+            layer: CollisionLayers::new(ObjectLayer::Collector, [ObjectLayer::Collectible]),
+            name: Name::new("Garbage Collector"),
+            config: CollectorConfig {
+                enabled: false,
+                color,
+            },
+            filter_out: OnCollectedFilterOut {
+                layer: on_collected_filter,
             },
         }
     }
@@ -120,11 +164,30 @@ impl CollectorParticlesBundle {
 
 impl Collector {
     const ANGULAR_SPEED: f32 = 10.0;
-    const COLLECTED_SPEED: f32 = 10.0;
+    const COLLECTED_SPEED: f32 = 5.0;
     const COLLECTOR_RADIUS_COEF: f32 = 1.2;
 
-    pub fn new(min_radius: f32, max_distance: f32, max_items: usize) -> Self {
+    pub fn fixed(
+        collection_radius: f32,
+        max_distance: f32,
+        max_items: usize,
+        max_points: usize,
+    ) -> Self {
+        let mut distribution = PointDistribution::new(0.0, max_distance);
+        distribution.update(max_points, DistributionShape::Circle);
         Self {
+            min_radius: collection_radius,
+            growing: false,
+            distribution,
+            shape: DistributionShape::Circle,
+            collected: Vec::with_capacity(max_items),
+        }
+    }
+
+    pub fn growing(min_radius: f32, max_distance: f32, max_items: usize) -> Self {
+        Self {
+            min_radius,
+            growing: true,
             distribution: PointDistribution::new(min_radius, max_distance),
             shape: DistributionShape::Circle,
             collected: Vec::with_capacity(max_items),
@@ -132,7 +195,11 @@ impl Collector {
     }
 
     pub fn radius(&self) -> f32 {
-        self.distribution.radius(self.len())
+        if self.growing {
+            self.distribution.radius(self.len())
+        } else {
+            self.min_radius
+        }
     }
 
     /// Calculate the rotation angle in radians for a constant linear speed.
@@ -156,6 +223,11 @@ impl Collector {
     }
 
     #[inline]
+    pub fn points_len(&self) -> usize {
+        self.distribution.len()
+    }
+
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.collected.is_empty()
     }
@@ -164,29 +236,41 @@ impl Collector {
         if self.len() >= self.collected.capacity() {
             return false;
         }
-        match dir.and_then(|d| self.distribution.find_closest_aligned_point(d)) {
-            Some((index, _)) => {
+        match (
+            self.growing,
+            dir.and_then(|d| self.distribution.find_closest_aligned_point(d)),
+        ) {
+            (true, Some((index, _))) => {
                 self.collected.insert(index, entity);
             }
-            None => {
+            _ => {
                 self.collected.push(entity);
             }
         }
-        self.distribution.update(self.len(), self.shape);
+        if self.growing {
+            self.distribution.update(self.len(), self.shape);
+        }
         true
     }
 
     pub fn remove(&mut self, entity: Entity) -> Option<Entity> {
         let index = self.collected.iter().position(|e| *e == entity)?;
         let res = self.collected.remove(index);
-        self.distribution.update(self.len(), self.shape);
+        if self.growing {
+            self.distribution.update(self.len(), self.shape);
+        }
         Some(res)
     }
 
     pub fn set_shape(&mut self, shape: DistributionShape) {
         log::info!("Collector shape is now a `{shape}`");
         self.shape = shape;
-        self.distribution.update(self.len(), self.shape);
+
+        if self.growing {
+            self.distribution.update(self.len(), self.shape);
+        } else {
+            self.distribution.update(self.points_len(), self.shape);
+        }
     }
 
     #[inline]
@@ -241,26 +325,32 @@ fn update_particles(
             continue;
         };
         tr.translation = gtr.translation();
-        if !collector.is_changed() {
-            continue;
-        }
         spawner.set_active(config.enabled);
-        properties.set("radius", collector.radius().into());
+        if collector.is_changed() {
+            properties.set("radius", collector.radius().into());
+        }
     }
 }
 
 fn update_collected_position(
     mut collected: Query<(&Transform, &mut LinearVelocity), (With<Collected>, Without<ThrownItem>)>,
-    mut collectors: Query<(&GlobalTransform, &Collector)>,
+    collectors: Query<(&GlobalTransform, &Collector, Option<&GarbageBody>)>,
 ) {
-    for (center_tr, collector) in &mut collectors {
+    for (center_tr, collector, body) in &collectors {
         let center = center_tr.translation();
         let mut collected = collected.iter_many_mut(&collector.collected);
-        let positions = collector.distribution.points();
+        let positions = match body {
+            Some(b) => b.compute_3d_positions(collector.len(), &collector.distribution),
+            None => collector
+                .distribution
+                .points()
+                .iter()
+                .map(|p| center + Vec3::new(p.x, 1.0, p.y))
+                .collect(),
+        };
         let mut i = 0_usize;
         while let Some((tr, mut linvel)) = collected.fetch_next() {
             let target = positions[i];
-            let target = center + Vec3::new(target.x, 1.0, target.y);
             let delta = target - tr.translation;
 
             linvel.0 = delta * Collector::COLLECTED_SPEED;
@@ -305,21 +395,27 @@ fn collect_items(
 }
 
 #[cfg(feature = "debug")]
-fn draw_gizmos(mut gizmos: Gizmos, collectors: Query<(&GlobalTransform, &Collector)>) {
+fn draw_gizmos(
+    mut gizmos: Gizmos,
+    collectors: Query<(&GlobalTransform, &Collector, Option<&GarbageBody>)>,
+) {
     use bevy::color::palettes::css::DARK_GRAY;
     let color = Color::Srgba(DARK_GRAY);
 
-    for (gt, collector) in &collectors {
+    for (gt, collector, body) in &collectors {
         let translation = gt.translation();
-        gizmos.circle(
-            translation,
-            Dir3::Y,
-            collector.distribution.radius(collector.collected.len()),
-            color,
-        );
-        for pos in collector.distribution.points() {
-            let p = translation + Vec3::new(pos.x, 0.0, pos.y);
-            gizmos.sphere(p, Quat::IDENTITY, 0.2, color);
+        gizmos.circle(translation, Dir3::Y, collector.radius(), color);
+        let positions = match body {
+            Some(b) => b.compute_3d_positions(collector.len(), &collector.distribution),
+            None => collector
+                .distribution
+                .points()
+                .iter()
+                .map(|p| translation + Vec3::new(p.x, 1.0, p.y))
+                .collect(),
+        };
+        for pos in positions {
+            gizmos.sphere(pos, Quat::IDENTITY, 0.2, color);
         }
     }
 }

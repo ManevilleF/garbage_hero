@@ -1,4 +1,4 @@
-use avian3d::{collision::CollidingEntities, prelude::*};
+use avian3d::prelude::*;
 use bevy::{log, prelude::*};
 
 use super::{

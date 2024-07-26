@@ -2,7 +2,7 @@ use std::f32::consts::FRAC_PI_2;
 
 use bevy::prelude::*;
 
-use crate::plugins::garbage::{DistributionShape, PointDistribution};
+use crate::plugins::garbage::PointDistribution;
 
 pub struct GarbageBodyPlugin;
 
@@ -117,11 +117,29 @@ pub struct GarbageBody {
 }
 
 impl GarbageBody {
-    pub fn new(amount: usize, pos: Vec3, radius: f32) -> Self {
+    pub fn new(amount: usize, pos: Vec3, radius: f32, offset: f32) -> Self {
         Self {
             dorsal: Chain::new(amount, pos, radius, FRAC_PI_2, 1.0),
-            offset: radius,
+            offset,
         }
+    }
+
+    pub fn compute_3d_positions(&self, len: usize, distribution: &PointDistribution) -> Vec<Vec3> {
+        let mut res = Vec::with_capacity(len);
+        let mut i = 0_usize;
+        let mut j = 0_usize;
+        while i < len && j < self.dorsal.len() {
+            let dorsal_point = &self.dorsal.points[j];
+            let rot = Quat::from_rotation_arc(Vec3::Y, *dorsal_point.direction);
+            let points = distribution.points();
+            for p in points {
+                let p = rot * Vec3::new(p.x, 0.0, p.y);
+                res.push(dorsal_point.position + p);
+            }
+            i += points.len();
+            j += 1;
+        }
+        res
     }
 }
 
@@ -139,15 +157,15 @@ fn draw_gizmos(mut gizmos: Gizmos, bodies: Query<&GarbageBody>) {
     for body in &bodies {
         // dorsal
         for point in &body.dorsal.points {
-            gizmos.circle(
-                point.position,
-                point.direction,
-                body.dorsal.point_radius,
-                Color::BLACK,
-            );
+            // gizmos.circle(
+            //     point.position,
+            //     point.direction,
+            //     body.dorsal.point_radius,
+            //     Color::BLACK,
+            // );
             gizmos.arrow(
                 point.position,
-                point.position + *point.direction,
+                point.position + *point.direction * body.dorsal.point_radius,
                 Color::BLACK,
             );
         }
