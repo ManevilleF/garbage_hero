@@ -164,7 +164,7 @@ impl CollectorParticlesBundle {
 
 impl Collector {
     const ANGULAR_SPEED: f32 = 10.0;
-    const COLLECTED_SPEED: f32 = 5.0;
+    const COLLECTED_SPEED: f32 = 2.0;
     const COLLECTOR_RADIUS_COEF: f32 = 1.2;
 
     pub fn fixed(
