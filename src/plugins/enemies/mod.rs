@@ -14,6 +14,8 @@ mod worm;
 use assets::{EnemyAssets, EnemyAssetsPlugin};
 use worm::{WormBundle, WormPlugin};
 
+const ENEMY_COLOR: Color = Color::BLACK;
+
 pub struct EnemiesPlugin;
 
 impl Plugin for EnemiesPlugin {
@@ -35,12 +37,12 @@ pub struct EnemyCollectorBundle {
 }
 
 impl EnemyCollectorBundle {
-    pub fn new(size: usize, color: Color, items_per_point: usize) -> Self {
+    pub fn new(size: usize, radius: f32, max_distance: f32, items_per_point: usize) -> Self {
         Self {
             collector: CollectorBundle::fixed(
-                5.0,
-                1.5,
-                color,
+                radius,
+                max_distance,
+                ENEMY_COLOR,
                 size * items_per_point,
                 items_per_point,
                 ObjectLayer::Enemy,
@@ -76,7 +78,17 @@ pub struct PlayerDetectorBundle {
 }
 
 impl PlayerDetectorBundle {
-    pub fn new() -> Self {
+    pub fn sphere(radius: f32, cooldown: f32) -> Self {
+        Self {
+            spatial: SpatialBundle::default(),
+            sensor: Sensor,
+            collider: Collider::sphere(radius),
+            layers: CollisionLayers::new(ObjectLayer::Enemy, ObjectLayer::Player),
+            detector: PlayerDetector::new(cooldown),
+        }
+    }
+
+    pub fn cone(cooldown: f32) -> Self {
         Self {
             spatial: SpatialBundle {
                 transform: Transform::from_xyz(0.0, 0.0, 5.0)
@@ -86,7 +98,7 @@ impl PlayerDetectorBundle {
             sensor: Sensor,
             collider: Collider::cone(15.0, 15.0),
             layers: CollisionLayers::new(ObjectLayer::Enemy, ObjectLayer::Player),
-            detector: PlayerDetector::new(3.0),
+            detector: PlayerDetector::new(cooldown),
         }
     }
 }
@@ -96,15 +108,15 @@ fn spawn_worm(mut commands: Commands, assets: Res<EnemyAssets>, particles: Res<P
     let enemy = commands
         .spawn(WormBundle::new(Vec3::Y * 2.0, &assets, SIZE))
         .id();
-    let mut collector_bundle = EnemyCollectorBundle::new(SIZE, Color::BLACK, 4);
+    let mut collector_bundle = EnemyCollectorBundle::new(SIZE, 5.0, 1.5, 4);
     collector_bundle.collector.config.enabled = true;
     let collector = commands.spawn(collector_bundle).set_parent(enemy).id();
     commands
-        .spawn(PlayerDetectorBundle::new())
+        .spawn(PlayerDetectorBundle::cone(3.0))
         .set_parent(enemy);
     commands.spawn(CollectorParticlesBundle::new(
         collector,
-        Color::BLACK,
+        ENEMY_COLOR,
         &particles,
     ));
 }

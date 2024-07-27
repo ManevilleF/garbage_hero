@@ -48,8 +48,8 @@ impl WormBundle {
     pub fn new(pos: Vec3, assets: &EnemyAssets, size: usize) -> Self {
         Self {
             pbr: PbrBundle {
-                material: assets.worm_head_mat[0].clone_weak(),
-                mesh: assets.worm_head_mesh.clone_weak(),
+                material: assets.materials[0].clone_weak(),
+                mesh: assets.mesh.clone_weak(),
                 transform: Transform::from_translation(pos),
                 ..default()
             },
@@ -57,7 +57,7 @@ impl WormBundle {
             movement: WormMovement::new(size as f32 * 1.5, pos),
             rigidbody: RigidBody::Kinematic,
             scale: GravityScale(0.0),
-            collider: assets.worm_head_collider.clone(),
+            collider: assets.collider.clone(),
             layers: CollisionLayers::new(ObjectLayer::Enemy, LayerMask::ALL),
             health: Health::new(BASE_HEALTH),
             damage: Damage(BASE_DAMAGE),

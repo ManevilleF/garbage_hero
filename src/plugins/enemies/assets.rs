@@ -16,9 +16,9 @@ impl Plugin for EnemyAssetsPlugin {
 
 #[derive(Resource)]
 pub struct EnemyAssets {
-    pub worm_head_mesh: Handle<Mesh>,
-    pub worm_head_mat: [Handle<StandardMaterial>; 5],
-    pub worm_head_collider: Collider,
+    pub mesh: Handle<Mesh>,
+    pub materials: [Handle<StandardMaterial>; 5],
+    pub collider: Collider,
 }
 
 impl FromWorld for EnemyAssets {
@@ -36,9 +36,9 @@ impl FromWorld for EnemyAssets {
         });
         let worm_head_collider = Collider::sphere(1.0);
         Self {
-            worm_head_mesh,
-            worm_head_mat,
-            worm_head_collider,
+            mesh: worm_head_mesh,
+            materials: worm_head_mat,
+            collider: worm_head_collider,
         }
     }
 }
@@ -49,8 +49,7 @@ fn update_materials(
 ) {
     for (mut mat, health) in &mut materials {
         let ratio = health.ratio();
-        let index =
-            (ratio * (assets.worm_head_mat.len().saturating_sub(1) as f32)).round() as usize;
-        *mat = assets.worm_head_mat[index].clone_weak();
+        let index = (ratio * (assets.materials.len().saturating_sub(1) as f32)).round() as usize;
+        *mat = assets.materials[index].clone_weak();
     }
 }

@@ -354,7 +354,10 @@ fn update_collected_position(
         };
         let mut i = 0_usize;
         while let Some((tr, mut linvel)) = collected.fetch_next() {
-            let target = positions[i];
+            let Some(target) = positions.get(i).copied() else {
+                log::error!("Collector has more positions than it has collected items");
+                continue;
+            };
             let delta = (target - tr.translation) * Collector::COLLECTED_SPEED;
 
             linvel.0 = delta.clamp_length_max(GarbageItem::MAX_SPEED);
