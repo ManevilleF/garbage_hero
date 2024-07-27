@@ -10,7 +10,7 @@ use bevy::{
 
 const CAM_SCALE_COEF: f32 = 0.001;
 const CAM_MIN_SCALE: f32 = 0.05;
-const CAM_OFFSET: Vec3 = Vec3::new(0.0, 30.0, -30.0);
+const CAM_OFFSET: Vec3 = Vec3::new(0.0, 30.0, 30.0);
 /// How quickly should the camera snap to the desired location.
 const CAMERA_DECAY_RATE: f32 = 4.;
 

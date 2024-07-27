@@ -163,7 +163,7 @@ fn update_aim(
                 else {
                     continue;
                 };
-                let direction = Dir2::new(dir).unwrap_or(Dir2::Y);
+                let direction = Dir2::new(dir * Vec2::new(1.0, -1.0)).unwrap_or(Dir2::Y);
                 let mut dir = aim.map_unchanged(|aim| &mut aim.dir);
                 dir.set_if_neq(direction);
             }

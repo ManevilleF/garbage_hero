@@ -76,8 +76,8 @@ pub fn apply_movement(
     let dt = time.delta_seconds();
     for (mut velocity, action_state, speed) in &mut controllers {
         if let Some(dir) = PlayerInput::get_movement(action_state) {
-            velocity.x -= dir.x * dt * speed.0;
-            velocity.z += dir.y * dt * speed.0;
+            velocity.x += dir.x * dt * speed.0;
+            velocity.z -= dir.y * dt * speed.0;
         }
     }
 }

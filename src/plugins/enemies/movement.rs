@@ -1,7 +1,10 @@
 use avian3d::prelude::CollidingEntities;
 use bevy::prelude::*;
 
-use crate::plugins::{garbage::CollectorConfig, player::Player};
+use crate::{
+    plugins::{garbage::CollectorConfig, player::Player},
+    GameState,
+};
 
 const PLUNGE_HEIGHT: f32 = 25.0;
 const MAX_DISTANCE: f32 = 100.0;
@@ -12,7 +15,10 @@ impl Plugin for EnemyMovementPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<EnemyMovement>()
             .register_type::<EnemyMovementState>()
-            .add_systems(FixedUpdate, (move_enemy, detect_players))
+            .add_systems(
+                FixedUpdate,
+                (move_enemy, detect_players).run_if(in_state(GameState::Running)),
+            )
             .add_systems(PostUpdate, handle_state_change);
     }
 }
@@ -46,7 +52,7 @@ pub struct PlayerDetector {
 }
 
 impl PlayerDetector {
-    pub fn new(cooldown: f32) -> Self {
+    pub const fn new(cooldown: f32) -> Self {
         Self {
             last_detection: 0.0,
             attack_cooldown: cooldown,

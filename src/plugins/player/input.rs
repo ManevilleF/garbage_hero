@@ -18,7 +18,7 @@ impl Plugin for PlayerInputPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<PlayerInput>()
             .add_plugins(InputManagerPlugin::<PlayerInput>::default())
-            .add_systems(Update, (handle_new_controllers, pause_game));
+            .add_systems(PostUpdate, (handle_new_controllers, pause_game));
     }
 }
 
@@ -90,13 +90,13 @@ impl PlayerInput {
         match controller {
             GameController::Gamepad(gamepad) => {
                 map.set_gamepad(gamepad)
-                    .insert(Pause, GamepadButtonType::Select)
+                    .insert(Pause, GamepadButtonType::Start)
                     .insert(Move, DualAxis::left_stick())
                     .insert(Move, VirtualDPad::dpad())
                     .insert(Aim, DualAxis::right_stick())
                     .insert(Skill(Collect), GamepadButtonType::South)
-                    .insert(Skill(Shoot), GamepadButtonType::RightTrigger)
-                    .insert(Skill(Defend), GamepadButtonType::LeftTrigger)
+                    .insert(Skill(Shoot), GamepadButtonType::RightTrigger2)
+                    .insert(Skill(Defend), GamepadButtonType::LeftTrigger2)
                     .insert(Skill(Dash), GamepadButtonType::East)
                     .insert(Skill(Burst), GamepadButtonType::West);
             }
