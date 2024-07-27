@@ -163,7 +163,6 @@ impl GarbageItem {
             'P' => Self::LargePlank,
             '|' => Self::Column,
             'I' => Self::LargeColumn,
-            'g' => Self::Gear,
             'b' => Self::Block,
             'B' => Self::LargeBlock,
             '^' => Self::Cone,

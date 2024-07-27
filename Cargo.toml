@@ -30,8 +30,6 @@ strum = { version = "0.26", features = ["derive"] }
 leafwing-input-manager = "0.14"
 # PRNG
 rand = "0.8"
-# Animation
-bevy_easings = "0.14"
 # errors
 thiserror = "1.0"
 

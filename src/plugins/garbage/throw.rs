@@ -6,9 +6,13 @@ use bevy::{
 };
 use bevy_mod_outline::{OutlineBundle, OutlineVolume};
 
+use crate::Damage;
+
 use super::{collector::CollectorConfig, Collected};
 
 pub struct ThrowPlugin;
+
+const THROW_DAMAGE: u16 = 10;
 
 impl Plugin for ThrowPlugin {
     fn build(&self, app: &mut App) {
@@ -37,18 +41,24 @@ impl Component for ThrownItem {
                 };
                 let color = config.color;
                 let mut commands = world.commands();
-                commands.entity(entity).insert(OutlineBundle {
-                    outline: OutlineVolume {
-                        visible: true,
-                        width: 3.0,
-                        colour: color,
+                commands.entity(entity).insert((
+                    OutlineBundle {
+                        outline: OutlineVolume {
+                            visible: true,
+                            width: 3.0,
+                            colour: color,
+                        },
+                        ..default()
                     },
-                    ..default()
-                });
+                    Damage(THROW_DAMAGE),
+                ));
             })
             .on_remove(|mut world, entity, _| {
                 let mut commands = world.commands();
-                commands.entity(entity).remove::<OutlineBundle>();
+                commands
+                    .entity(entity)
+                    .remove::<OutlineBundle>()
+                    .remove::<Damage>();
             });
     }
 }
@@ -63,7 +73,7 @@ fn reset_thrown_items(
     mut commands: Commands,
     items: Query<(Entity, &LinearVelocity), With<ThrownItem>>,
 ) {
-    const TRESHOLD: f32 = 1.0;
+    const TRESHOLD: f32 = 9.0;
 
     for (entity, linvel) in &items {
         if linvel.0.length_squared() <= TRESHOLD {

@@ -9,67 +9,24 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 
 mod assets;
-mod movement;
+mod worm;
 
 use assets::{EnemyAssets, EnemyAssetsPlugin};
-use movement::{EnemyMovement, EnemyMovementPlugin, EnemyMovementState, PlayerDetector};
-
-const BASE_HEALTH: u16 = 100;
-const BASE_DAMAGE: u16 = 10;
-
-use super::{Damage, Health};
+use worm::{WormBundle, WormPlugin};
 
 pub struct EnemiesPlugin;
 
 impl Plugin for EnemiesPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((EnemyMovementPlugin, EnemyAssetsPlugin))
+        app.add_plugins((WormPlugin, EnemyAssetsPlugin))
             .register_type::<Enemy>();
 
-        app.add_systems(Startup, spawn_enemy);
+        app.add_systems(Startup, spawn_worm);
     }
 }
 
 #[derive(Debug, Component, Reflect)]
 pub struct Enemy;
-
-#[derive(Bundle)]
-pub struct EnemyBundle {
-    pub pbr: PbrBundle,
-    pub enemy: Enemy,
-    pub movement: EnemyMovement,
-    pub state: EnemyMovementState,
-    pub rigidbody: RigidBody,
-    pub collider: Collider,
-    pub layers: CollisionLayers,
-    pub scale: GravityScale,
-    pub health: Health,
-    pub damage: Damage,
-    pub name: Name,
-}
-
-impl EnemyBundle {
-    pub fn new(pos: Vec3, assets: &EnemyAssets, size: usize) -> Self {
-        Self {
-            pbr: PbrBundle {
-                material: assets.worm_head_mat[0].clone_weak(),
-                mesh: assets.worm_head_mesh.clone_weak(),
-                transform: Transform::from_translation(pos),
-                ..default()
-            },
-            enemy: Enemy,
-            movement: EnemyMovement::new(size as f32 * 1.5, pos),
-            rigidbody: RigidBody::Kinematic,
-            scale: GravityScale(0.0),
-            collider: assets.worm_head_collider.clone(),
-            layers: CollisionLayers::new(ObjectLayer::Enemy, LayerMask::ALL),
-            health: Health::new(BASE_HEALTH),
-            damage: Damage(BASE_DAMAGE),
-            name: Name::new("Worm"),
-            state: EnemyMovementState::default(),
-        }
-    }
-}
 
 #[derive(Bundle)]
 pub struct EnemyCollectorBundle {
@@ -89,6 +46,22 @@ impl EnemyCollectorBundle {
                 ObjectLayer::Enemy,
             ),
             body: GarbageBody::new(size, Vec3::ZERO, 2.5, -1.0),
+        }
+    }
+}
+
+#[derive(Debug, Component, Reflect, Clone, Copy)]
+#[reflect(Component)]
+pub struct PlayerDetector {
+    last_detection: f32,
+    pub attack_cooldown: f32,
+}
+
+impl PlayerDetector {
+    pub const fn new(cooldown: f32) -> Self {
+        Self {
+            last_detection: 0.0,
+            attack_cooldown: cooldown,
         }
     }
 }
@@ -118,10 +91,10 @@ impl PlayerDetectorBundle {
     }
 }
 
-fn spawn_enemy(mut commands: Commands, assets: Res<EnemyAssets>, particles: Res<ParticleConfig>) {
+fn spawn_worm(mut commands: Commands, assets: Res<EnemyAssets>, particles: Res<ParticleConfig>) {
     const SIZE: usize = 15;
     let enemy = commands
-        .spawn(EnemyBundle::new(Vec3::Y * 2.0, &assets, SIZE))
+        .spawn(WormBundle::new(Vec3::Y * 2.0, &assets, SIZE))
         .id();
     let mut collector_bundle = EnemyCollectorBundle::new(SIZE, Color::BLACK, 4);
     collector_bundle.collector.config.enabled = true;

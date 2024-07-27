@@ -1,38 +1,86 @@
-use avian3d::prelude::CollidingEntities;
+use avian3d::prelude::*;
 use bevy::prelude::*;
 
 use crate::{
-    plugins::{garbage::CollectorConfig, player::Player},
-    Dead, GameState,
+    plugins::{garbage::CollectorConfig, particles::DeathEffect, player::Player},
+    Damage, Dead, GameState, Health, ObjectLayer,
 };
+
+use super::{assets::EnemyAssets, Enemy, PlayerDetector};
 
 const PLUNGE_HEIGHT: f32 = 25.0;
 const MAX_DISTANCE: f32 = 100.0;
 
-pub struct EnemyMovementPlugin;
+const BASE_HEALTH: u16 = 100;
+const BASE_DAMAGE: u16 = 10;
 
-impl Plugin for EnemyMovementPlugin {
+pub struct WormPlugin;
+
+impl Plugin for WormPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<EnemyMovement>()
-            .register_type::<EnemyMovementState>()
+        app.register_type::<WormMovement>()
+            .register_type::<WormState>()
             .add_systems(
                 FixedUpdate,
-                (move_enemy, detect_players).run_if(in_state(GameState::Running)),
+                (behave, detect_players).run_if(in_state(GameState::Running)),
             )
             .add_systems(PostUpdate, handle_state_change);
     }
 }
 
+#[derive(Bundle)]
+pub struct WormBundle {
+    pub pbr: PbrBundle,
+    pub enemy: Enemy,
+    pub movement: WormMovement,
+    pub state: WormState,
+    pub rigidbody: RigidBody,
+    pub collider: Collider,
+    pub layers: CollisionLayers,
+    pub scale: GravityScale,
+    pub health: Health,
+    pub damage: Damage,
+    pub name: Name,
+    pub death: DeathEffect,
+}
+
+impl WormBundle {
+    pub fn new(pos: Vec3, assets: &EnemyAssets, size: usize) -> Self {
+        Self {
+            pbr: PbrBundle {
+                material: assets.worm_head_mat[0].clone_weak(),
+                mesh: assets.worm_head_mesh.clone_weak(),
+                transform: Transform::from_translation(pos),
+                ..default()
+            },
+            enemy: Enemy,
+            movement: WormMovement::new(size as f32 * 1.5, pos),
+            rigidbody: RigidBody::Kinematic,
+            scale: GravityScale(0.0),
+            collider: assets.worm_head_collider.clone(),
+            layers: CollisionLayers::new(ObjectLayer::Enemy, LayerMask::ALL),
+            health: Health::new(BASE_HEALTH),
+            damage: Damage(BASE_DAMAGE),
+            name: Name::new("Worm"),
+            state: WormState::default(),
+            death: DeathEffect {
+                color: Color::BLACK,
+                radius: 1.0,
+            },
+        }
+    }
+}
+
 #[derive(Debug, Component, Reflect)]
 #[reflect(Component)]
-pub struct EnemyMovement {
+pub struct WormMovement {
     elapsed: f32,
     pub speed: f32,
     pub spawn_position: Vec3,
     pub anchor_position: Vec3,
 }
 
-impl EnemyMovement {
+impl WormMovement {
     #[inline]
     pub const fn new(speed: f32, position: Vec3) -> Self {
         Self {
@@ -44,25 +92,9 @@ impl EnemyMovement {
     }
 }
 
-#[derive(Debug, Component, Reflect, Clone, Copy)]
-#[reflect(Component)]
-pub struct PlayerDetector {
-    last_detection: f32,
-    pub attack_cooldown: f32,
-}
-
-impl PlayerDetector {
-    pub const fn new(cooldown: f32) -> Self {
-        Self {
-            last_detection: 0.0,
-            attack_cooldown: cooldown,
-        }
-    }
-}
-
 #[derive(Debug, Component, Reflect, Default, Clone, Copy)]
 #[reflect(Component)]
-pub enum EnemyMovementState {
+pub enum WormState {
     #[default]
     Idle,
     PrepareAttack(Vec3),
@@ -70,8 +102,8 @@ pub enum EnemyMovementState {
     Returning,
 }
 
-fn move_enemy(
-    mut enemies: Query<(&mut Transform, &mut EnemyMovement, &mut EnemyMovementState)>,
+fn behave(
+    mut enemies: Query<(&mut Transform, &mut WormMovement, &mut WormState)>,
     time: Res<Time>,
 ) {
     let dt = time.delta_seconds();
@@ -79,7 +111,7 @@ fn move_enemy(
         let position = transform.translation;
         let speed = movement.speed;
         let target_position = match *state {
-            EnemyMovementState::Idle => {
+            WormState::Idle => {
                 // Figure-eight pattern
                 let delta = Vec3::new(
                     speed * movement.elapsed.sin(),
@@ -89,36 +121,36 @@ fn move_enemy(
                 movement.elapsed += dt;
                 movement.anchor_position + delta
             }
-            EnemyMovementState::PrepareAttack(target) => 'att: {
+            WormState::PrepareAttack(target) => 'att: {
                 if position.distance(target) < 1.0 {
-                    *state = EnemyMovementState::PlungeAttack(Vec3::new(target.x, 0.5, target.z));
+                    *state = WormState::PlungeAttack(Vec3::new(target.x, 0.5, target.z));
                     break 'att position;
                 }
                 let Ok(dir) = Dir3::new(target - position) else {
-                    *state = EnemyMovementState::PlungeAttack(Vec3::new(target.x, 0.5, target.z));
+                    *state = WormState::PlungeAttack(Vec3::new(target.x, 0.5, target.z));
                     break 'att position;
                 };
                 position + *dir * speed * 1.5 * dt
             }
-            EnemyMovementState::PlungeAttack(target) => 'att: {
+            WormState::PlungeAttack(target) => 'att: {
                 if position.distance(target) < 1.0 {
-                    *state = EnemyMovementState::Returning;
+                    *state = WormState::Returning;
                     break 'att position;
                 }
                 let Ok(dir) = Dir3::new(target - position) else {
-                    *state = EnemyMovementState::Returning;
+                    *state = WormState::Returning;
                     break 'att position;
                 };
                 position + *dir * speed * 2.0 * dt
             }
-            EnemyMovementState::Returning => {
+            WormState::Returning => {
                 movement.anchor_position.x = position.x;
                 movement.anchor_position.z = position.z;
                 if movement.anchor_position.distance(movement.spawn_position) > MAX_DISTANCE {
-                    *state = EnemyMovementState::PrepareAttack(movement.spawn_position)
+                    *state = WormState::PrepareAttack(movement.spawn_position)
                 } else {
                     movement.elapsed = 0.0;
-                    *state = EnemyMovementState::Idle;
+                    *state = WormState::Idle;
                 }
                 position
             }
@@ -134,7 +166,7 @@ fn move_enemy(
 fn detect_players(
     time: Res<Time>,
     mut detectors: Query<(&Parent, &mut PlayerDetector, &CollidingEntities)>,
-    mut enemies: Query<&mut EnemyMovementState>,
+    mut enemies: Query<&mut WormState>,
     players: Query<&GlobalTransform, (With<Player>, Without<Dead>)>,
 ) {
     let dt = time.delta_seconds();
@@ -144,30 +176,28 @@ fn detect_players(
             continue;
         }
         let mut state = enemies.get_mut(parent.get()).unwrap();
-        if matches!(*state, EnemyMovementState::PrepareAttack(_)) {
+        if matches!(*state, WormState::PrepareAttack(_)) {
             continue;
         }
         let Some(gtr) = collisions.iter().find_map(|e| players.get(*e).ok()) else {
             continue;
         };
         let target = gtr.translation();
-        *state = EnemyMovementState::PrepareAttack(Vec3::new(target.x, PLUNGE_HEIGHT, target.z));
+        *state = WormState::PrepareAttack(Vec3::new(target.x, PLUNGE_HEIGHT, target.z));
         detector.last_detection = 0.0;
     }
 }
 
 fn handle_state_change(
-    enemies: Query<(&EnemyMovementState, &Children), Changed<EnemyMovementState>>,
+    enemies: Query<(&WormState, &Children), Changed<WormState>>,
     mut collectors: Query<&mut CollectorConfig>,
 ) {
     for (state, children) in &enemies {
         let mut configs = collectors.iter_many_mut(children);
         while let Some(mut config) = configs.fetch_next() {
             match state {
-                EnemyMovementState::PrepareAttack(_) | EnemyMovementState::PlungeAttack(_) => {
-                    config.enabled = false
-                }
-                EnemyMovementState::Idle | EnemyMovementState::Returning => config.enabled = true,
+                WormState::PrepareAttack(_) | WormState::PlungeAttack(_) => config.enabled = false,
+                WormState::Idle | WormState::Returning => config.enabled = true,
             }
         }
     }

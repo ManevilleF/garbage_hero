@@ -10,6 +10,7 @@ mod light;
 mod map;
 mod particles;
 mod player;
+mod splash;
 mod ui;
 
 pub use camera::{CameraPlugin, GameCamera};
@@ -25,6 +26,8 @@ pub use map::MapPlugin;
 pub use particles::ParticleConfig;
 pub use particles::ParticlesPlugin;
 pub use player::PlayerPlugin;
+#[cfg(not(feature = "debug"))]
+pub use splash::SplashScreenPlugin;
 
 pub mod utils {
     use bevy::render::{

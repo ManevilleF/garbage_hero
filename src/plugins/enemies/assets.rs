@@ -27,7 +27,7 @@ impl FromWorld for EnemyAssets {
         let worm_head_mesh = meshes.add(Sphere::new(1.0));
 
         let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
-        let worm_head_mat = [1, 52, 103, 154, 255].map(|r| {
+        let worm_head_mat = [255, 154, 103, 52, 1].map(|r| {
             materials.add(StandardMaterial {
                 base_color: Color::srgb_u8(r, 0, 0),
                 unlit: true,

@@ -3,8 +3,6 @@ use bevy_hanabi::prelude::*;
 
 use crate::Dead;
 
-use super::garbage::GarbageItem;
-
 pub struct ParticlesPlugin;
 
 impl Plugin for ParticlesPlugin {
@@ -12,6 +10,7 @@ impl Plugin for ParticlesPlugin {
         app.add_plugins(HanabiPlugin)
             .register_type::<ParticleConfig>()
             .init_resource::<ParticleConfig>()
+            .register_type::<DeathEffect>()
             .register_type::<DestructionInstructions>()
             .init_resource::<DestructionInstructions>()
             .add_systems(
@@ -34,15 +33,22 @@ impl Plugin for ParticlesPlugin {
 #[reflect(Resource)]
 struct DestructionInstructions {
     /// Position, color as a u32
-    data: Vec<(Vec3, Color)>,
+    data: Vec<(Vec3, DeathEffect)>,
+}
+
+#[derive(Component, Reflect, Clone, Copy)]
+#[reflect(Component)]
+pub struct DeathEffect {
+    pub color: Color,
+    pub radius: f32,
 }
 
 fn trigger_destroy_particles(
-    targets: Query<(&GlobalTransform, &GarbageItem), Added<Dead>>,
+    targets: Query<(&GlobalTransform, &DeathEffect), Added<Dead>>,
     mut instructions: ResMut<DestructionInstructions>,
 ) {
-    for (gtr, item) in &targets {
-        instructions.data.push((gtr.translation(), item.color()));
+    for (gtr, effect) in &targets {
+        instructions.data.push((gtr.translation(), *effect));
     }
 }
 
@@ -51,7 +57,7 @@ fn apply_destruction_particles(
     emitters: Res<ParticleConfig>,
     mut particles: Query<(&mut EffectProperties, &mut EffectSpawner, &mut Transform)>,
 ) {
-    let Some((pos, color)) = instructions.data.pop() else {
+    let Some((pos, effect)) = instructions.data.pop() else {
         return;
     };
     let Ok((mut properties, mut spawner, mut particle_tr)) =
@@ -60,7 +66,8 @@ fn apply_destruction_particles(
         return;
     };
     particle_tr.translation = pos;
-    properties.set("color", ParticleConfig::color_to_value(color));
+    properties.set("color", ParticleConfig::color_to_value(effect.color));
+    properties.set("radius", effect.radius.into());
     spawner.reset();
 }
 
@@ -153,7 +160,7 @@ impl ParticleConfig {
 
     fn destruction_effect(texture: Handle<Image>) -> EffectAsset {
         // Set `spawn_immediately` to false to spawn on command with Spawner::reset()
-        let spawner = Spawner::once(70.0.into(), false);
+        let spawner = Spawner::once(100.0.into(), false);
         let mut size_gradient = Gradient::new();
         size_gradient.add_key(0.0, Vec2::splat(0.05)); // Start size
         size_gradient.add_key(0.1, Vec2::splat(0.8)); // Start size
@@ -168,18 +175,21 @@ impl ParticleConfig {
         let color = writer.prop(spawn_color).expr();
         let init_color = SetAttributeModifier::new(Attribute::COLOR, color);
 
+        let radius_prop = writer.add_property("radius", 1.0_f32.into());
+        let radius = writer.prop(radius_prop).expr();
+
         let init_pos = SetPositionSphereModifier {
             center: writer.lit(Vec3::ZERO).expr(),
-            radius: writer.lit(0.5).expr(),
+            radius,
             dimension: ShapeDimension::Volume,
         };
         let init_vel = SetVelocitySphereModifier {
             center: writer.lit(Vec3::ZERO).expr(),
-            speed: writer.lit(3.0).expr(),
+            speed: writer.lit(5.0).expr(),
         };
         let init_age = SetAttributeModifier::new(Attribute::AGE, writer.lit(0.0).expr());
         // Give a bit of variation by randomizing the lifetime per particle
-        let lifetime = writer.lit(1.0).uniform(writer.lit(1.5)).expr();
+        let lifetime = writer.lit(1.0).uniform(writer.lit(2.0)).expr();
         let init_lifetime = SetAttributeModifier::new(Attribute::LIFETIME, lifetime);
         let update_size = SizeOverLifetimeModifier {
             gradient: size_gradient,

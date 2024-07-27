@@ -25,7 +25,6 @@ pub enum ObjectLayer {
     Player,
     Enemy,
     Map,
-    Item,
     Bullet,
     Collectible,
     Collector,
@@ -67,6 +66,8 @@ pub fn run() -> AppExit {
         MapPlugin,
         ParticlesPlugin,
         EnemiesPlugin,
+        #[cfg(not(feature = "debug"))]
+        SplashScreenPlugin,
     ))
     .add_systems(PostUpdate, handle_pause);
     #[cfg(feature = "debug")]

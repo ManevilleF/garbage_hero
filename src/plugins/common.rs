@@ -1,10 +1,7 @@
 use avian3d::prelude::*;
 use bevy::{log, prelude::*};
 
-use super::{
-    garbage::{Collected, ThrownItem},
-    player::Player,
-};
+use super::player::Player;
 
 pub struct CommonPlugin;
 
@@ -15,7 +12,7 @@ impl Plugin for CommonPlugin {
             .register_type::<Dead>()
             .add_systems(First, despawn_deads)
             .add_systems(PreUpdate, handle_death)
-            .add_systems(Update, (direct_damage, velocity_damage, tick_health));
+            .add_systems(Update, (direct_damage, tick_health));
     }
 }
 
@@ -95,62 +92,6 @@ fn direct_damage(
         }
         if let Some((damage, mut health)) = damage_b.zip(health_a) {
             health.damage(damage.0);
-        }
-    }
-}
-
-fn velocity_damage(
-    mut events: EventReader<CollisionStarted>,
-    mut healths: Query<
-        (
-            Option<&LinearVelocity>,
-            &mut Health,
-            Option<&Collected>,
-            Option<&ThrownItem>,
-            Has<Player>,
-        ),
-        With<Collider>,
-    >,
-) {
-    const VEL_TRESHOLD: f32 = 15.0;
-    const DAMAGE_RATIO: f32 = 0.2;
-
-    for CollisionStarted(a, b) in events.read() {
-        let Ok(
-            [(linvel_a, mut health_a, collected_a, thrown_a, is_player_a), (linvel_b, mut health_b, collected_b, thrown_b, is_player_b)],
-        ) = healths.get_many_mut([*a, *b])
-        else {
-            // debug ?
-            continue;
-        };
-        // Skip damage if both objects are collected by the same entity
-        if collected_a
-            .map(|c| c.collector_entity)
-            .or_else(|| thrown_a.map(|t| t.collector_entity))
-            .zip(
-                collected_b
-                    .map(|c| c.collector_entity)
-                    .or_else(|| thrown_b.map(|t| t.collector_entity)),
-            )
-            .map(|(a, b)| a == b)
-            .unwrap_or(false)
-        {
-            continue;
-        }
-        // Skip damage between players and non collected/thrown items
-        if (is_player_a && collected_b.is_none() && thrown_b.is_none())
-            || (is_player_b && collected_a.is_none() && thrown_a.is_none())
-        {
-            continue;
-        }
-
-        let velocity = linvel_a.map(|v| v.0).unwrap_or(Vec3::ZERO)
-            + linvel_b.map(|v| v.0).unwrap_or(Vec3::ZERO);
-        let length = velocity.length().floor();
-        let damage = ((length - VEL_TRESHOLD) * DAMAGE_RATIO).floor() as u16;
-        if damage > 0 {
-            health_a.damage(damage);
-            health_b.damage(damage);
         }
     }
 }

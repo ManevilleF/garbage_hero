@@ -1,6 +1,3 @@
-use std::f32::consts::FRAC_PI_2;
-
-use crate::plugins::common::Health;
 use crate::ObjectLayer;
 use avian3d::prelude::*;
 use bevy::color::palettes::css::*;
@@ -22,8 +19,6 @@ pub enum GarbageItem {
     Column,
     /// 3x1
     LargeColumn,
-    /// 2x2
-    Gear,
     /// 2x1
     Block,
     /// 2x1
@@ -37,21 +32,6 @@ pub enum GarbageItem {
 impl GarbageItem {
     pub const MAX_SPEED: f32 = 75.0;
 
-    pub const fn base_health(self) -> Health {
-        match self {
-            Self::Cube => Health::new(10),
-            Self::Plank => Health::new(10),
-            Self::LargePlank => Health::new(15),
-            Self::Column => Health::new(20),
-            Self::LargeColumn => Health::new(30),
-            Self::Gear => Health::new(20),
-            Self::Block => Health::new(20),
-            Self::Cone => Health::new(15),
-            Self::LargeBlock => Health::new(30),
-            Self::Ball => Health::new(20),
-        }
-    }
-
     pub fn color(self) -> Color {
         match self {
             Self::Cube => SANDY_BROWN.into(),
@@ -59,7 +39,6 @@ impl GarbageItem {
             Self::LargePlank => CHOCOLATE.into(),
             Self::Column => SIENNA.into(),
             Self::LargeColumn => SADDLE_BROWN.into(),
-            Self::Gear => GOLDENROD.into(),
             Self::Block => DARK_GOLDENROD.into(),
             Self::Cone => DARK_ORANGE.into(),
             Self::LargeBlock => CORAL.into(),
@@ -74,7 +53,6 @@ impl GarbageItem {
             Self::LargePlank => Cuboid::new(3.0, 0.5, 1.0).into(),
             Self::Column => Cylinder::new(0.5, 2.0).into(),
             Self::LargeColumn => Cylinder::new(0.5, 3.0).into(),
-            Self::Gear => Extrusion::new(Annulus::new(0.8, 1.0), 0.5).into(),
             Self::Cone => Cone {
                 radius: 1.0,
                 height: 1.5,
@@ -93,11 +71,6 @@ impl GarbageItem {
             Self::LargePlank => Collider::cuboid(3.0, 0.5, 1.0),
             Self::Column => Collider::cylinder(0.5, 2.0),
             Self::LargeColumn => Collider::cylinder(0.5, 3.0),
-            Self::Gear => Collider::compound(vec![(
-                Vec3::ZERO,
-                Quat::from_rotation_x(FRAC_PI_2),
-                Collider::cylinder(1.0, 0.5),
-            )]),
             Self::Cone => Collider::cone(1.0, 1.5),
             Self::Block => Collider::cuboid(1.0, 2.0, 1.0),
             Self::LargeBlock => Collider::cuboid(1.0, 3.0, 1.0),
@@ -109,7 +82,6 @@ impl GarbageItem {
 #[derive(Bundle)]
 pub struct GarbageBundle {
     pub collectible: GarbageItem,
-    pub health: Health,
     pub pbr: PbrBundle,
     pub rigidbody: RigidBody,
     pub collider: Collider,
@@ -123,7 +95,6 @@ pub struct GarbageBundle {
 impl GarbageBundle {
     pub fn new(collectible: GarbageItem, assets: &GarbageAssets) -> Self {
         Self {
-            health: collectible.base_health(),
             collectible,
             pbr: PbrBundle {
                 mesh: assets.meshes[collectible as usize].clone_weak(),
