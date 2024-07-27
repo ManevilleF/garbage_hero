@@ -1,4 +1,4 @@
-use crate::ObjectLayer;
+use crate::{plugins::particles::DeathEffect, Health, ObjectLayer};
 use avian3d::prelude::*;
 use bevy::color::palettes::css::*;
 use bevy::prelude::*;
@@ -90,6 +90,8 @@ pub struct GarbageBundle {
     pub ang_damping: AngularDamping,
     pub gravity_scale: GravityScale,
     pub name: Name,
+    pub health: Health,
+    pub death: DeathEffect,
 }
 
 impl GarbageBundle {
@@ -108,6 +110,11 @@ impl GarbageBundle {
             layer: CollisionLayers::new(ObjectLayer::Collectible, LayerMask::ALL),
             gravity_scale: GravityScale(1.0),
             name: Name::new(format!("{collectible}")),
+            health: Health::new(15),
+            death: DeathEffect {
+                color: collectible.color(),
+                radius: 0.5,
+            },
         }
     }
 }

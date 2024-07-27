@@ -1,18 +1,17 @@
 use std::f32::consts::{FRAC_PI_2, PI};
 
-use super::{
-    garbage::{CollectorBundle, GarbageBody},
-    ParticleConfig,
-};
-use crate::{plugins::garbage::CollectorParticlesBundle, ObjectLayer};
+use super::{player::Player, Dead};
+use crate::ObjectLayer;
 use avian3d::prelude::*;
 use bevy::prelude::*;
 
 mod assets;
+mod auto_turret;
 mod worm;
 
-use assets::{EnemyAssets, EnemyAssetsPlugin};
-use worm::{WormBundle, WormPlugin};
+use assets::EnemyAssetsPlugin;
+use auto_turret::AutoTurretPlugin;
+use worm::WormPlugin;
 
 const ENEMY_COLOR: Color = Color::BLACK;
 
@@ -20,37 +19,17 @@ pub struct EnemiesPlugin;
 
 impl Plugin for EnemiesPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((WormPlugin, EnemyAssetsPlugin))
-            .register_type::<Enemy>();
-
-        app.add_systems(Startup, spawn_worm);
+        app.add_plugins((WormPlugin, AutoTurretPlugin, EnemyAssetsPlugin))
+            .register_type::<Enemy>()
+            .register_type::<TargetPlayer>()
+            .add_event::<SpawnTurret>()
+            .add_event::<SpawnWorm>()
+            .add_systems(FixedUpdate, detect_players);
     }
 }
 
 #[derive(Debug, Component, Reflect)]
 pub struct Enemy;
-
-#[derive(Bundle)]
-pub struct EnemyCollectorBundle {
-    pub collector: CollectorBundle,
-    pub body: GarbageBody,
-}
-
-impl EnemyCollectorBundle {
-    pub fn new(size: usize, radius: f32, max_distance: f32, items_per_point: usize) -> Self {
-        Self {
-            collector: CollectorBundle::fixed(
-                radius,
-                max_distance,
-                ENEMY_COLOR,
-                size * items_per_point,
-                items_per_point,
-                ObjectLayer::Enemy,
-            ),
-            body: GarbageBody::new(size, Vec3::ZERO, 2.5, -1.0),
-        }
-    }
-}
 
 #[derive(Debug, Component, Reflect, Clone, Copy)]
 #[reflect(Component)]
@@ -67,6 +46,9 @@ impl PlayerDetector {
         }
     }
 }
+
+#[derive(Component, Reflect, Deref)]
+pub struct TargetPlayer(Vec3);
 
 #[derive(Bundle)]
 pub struct PlayerDetectorBundle {
@@ -103,20 +85,34 @@ impl PlayerDetectorBundle {
     }
 }
 
-fn spawn_worm(mut commands: Commands, assets: Res<EnemyAssets>, particles: Res<ParticleConfig>) {
-    const SIZE: usize = 15;
-    let enemy = commands
-        .spawn(WormBundle::new(Vec3::Y * 2.0, &assets, SIZE))
-        .id();
-    let mut collector_bundle = EnemyCollectorBundle::new(SIZE, 5.0, 1.5, 4);
-    collector_bundle.collector.config.enabled = true;
-    let collector = commands.spawn(collector_bundle).set_parent(enemy).id();
-    commands
-        .spawn(PlayerDetectorBundle::cone(3.0))
-        .set_parent(enemy);
-    commands.spawn(CollectorParticlesBundle::new(
-        collector,
-        ENEMY_COLOR,
-        &particles,
-    ));
+fn detect_players(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut detectors: Query<(&Parent, &mut PlayerDetector, &CollidingEntities)>,
+    players: Query<&GlobalTransform, (With<Player>, Without<Dead>)>,
+) {
+    let dt = time.delta_seconds();
+    for (parent, mut detector, collisions) in &mut detectors {
+        detector.last_detection += dt;
+        if detector.last_detection < detector.attack_cooldown {
+            continue;
+        }
+        let Some(gtr) = collisions.iter().find_map(|e| players.get(*e).ok()) else {
+            continue;
+        };
+        let target = gtr.translation();
+        commands.entity(parent.get()).insert(TargetPlayer(target));
+        detector.last_detection = 0.0;
+    }
+}
+
+#[derive(Event, Reflect)]
+pub struct SpawnWorm {
+    pub size: usize,
+    pub position: Vec2,
+}
+
+#[derive(Event, Reflect)]
+pub struct SpawnTurret {
+    pub position: Vec2,
 }

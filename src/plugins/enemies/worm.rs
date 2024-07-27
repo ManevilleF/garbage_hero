@@ -2,11 +2,16 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 
 use crate::{
-    plugins::{garbage::CollectorConfig, particles::DeathEffect, player::Player},
-    Damage, Dead, GameState, Health, ObjectLayer,
+    plugins::{
+        garbage::{CollectorBundle, CollectorConfig, CollectorParticlesBundle, GarbageBody},
+        particles::DeathEffect,
+    },
+    Damage, GameState, Health, ObjectLayer, ParticleConfig,
 };
 
-use super::{assets::EnemyAssets, Enemy, PlayerDetector};
+use super::{
+    assets::EnemyAssets, Enemy, PlayerDetectorBundle, SpawnWorm, TargetPlayer, ENEMY_COLOR,
+};
 
 const PLUNGE_HEIGHT: f32 = 25.0;
 const MAX_DISTANCE: f32 = 100.0;
@@ -20,6 +25,7 @@ impl Plugin for WormPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<WormMovement>()
             .register_type::<WormState>()
+            .add_systems(Update, spawn_worm)
             .add_systems(
                 FixedUpdate,
                 (behave, detect_players).run_if(in_state(GameState::Running)),
@@ -54,7 +60,7 @@ impl WormBundle {
                 ..default()
             },
             enemy: Enemy,
-            movement: WormMovement::new(size as f32 * 1.5, pos),
+            movement: WormMovement::new((size as f32 * 1.5).max(10.0), pos),
             rigidbody: RigidBody::Kinematic,
             scale: GravityScale(0.0),
             collider: assets.collider.clone(),
@@ -164,27 +170,14 @@ fn behave(
 }
 
 fn detect_players(
-    time: Res<Time>,
-    mut detectors: Query<(&Parent, &mut PlayerDetector, &CollidingEntities)>,
-    mut enemies: Query<&mut WormState>,
-    players: Query<&GlobalTransform, (With<Player>, Without<Dead>)>,
+    mut commands: Commands,
+    mut enemies: Query<(Entity, &mut WormState, &TargetPlayer), Added<TargetPlayer>>,
 ) {
-    let dt = time.delta_seconds();
-    for (parent, mut detector, collisions) in &mut detectors {
-        detector.last_detection += dt;
-        if detector.last_detection < detector.attack_cooldown {
-            continue;
+    for (entity, mut state, target) in &mut enemies {
+        if matches!(*state, WormState::Idle) {
+            *state = WormState::PrepareAttack(Vec3::new(target.x, PLUNGE_HEIGHT, target.z));
         }
-        let mut state = enemies.get_mut(parent.get()).unwrap();
-        if matches!(*state, WormState::PrepareAttack(_)) {
-            continue;
-        }
-        let Some(gtr) = collisions.iter().find_map(|e| players.get(*e).ok()) else {
-            continue;
-        };
-        let target = gtr.translation();
-        *state = WormState::PrepareAttack(Vec3::new(target.x, PLUNGE_HEIGHT, target.z));
-        detector.last_detection = 0.0;
+        commands.entity(entity).remove::<TargetPlayer>();
     }
 }
 
@@ -200,5 +193,40 @@ fn handle_state_change(
                 WormState::Idle | WormState::Returning => config.enabled = true,
             }
         }
+    }
+}
+
+fn spawn_worm(
+    mut events: EventReader<SpawnWorm>,
+    mut commands: Commands,
+    assets: Res<EnemyAssets>,
+    particles: Res<ParticleConfig>,
+) {
+    for event in events.read() {
+        let enemy = commands
+            .spawn(WormBundle::new(
+                Vec3::new(event.position.x, 2.0, event.position.y),
+                &assets,
+                event.size,
+            ))
+            .id();
+        let mut collector_bundle =
+            CollectorBundle::fixed(5.0, 1.4, ENEMY_COLOR, event.size * 4, 4, ObjectLayer::Enemy);
+        collector_bundle.config.enabled = true;
+        let collector = commands
+            .spawn((
+                collector_bundle,
+                GarbageBody::new(event.size, Vec3::ZERO, 2.5, -1.0),
+            ))
+            .set_parent(enemy)
+            .id();
+        commands
+            .spawn(PlayerDetectorBundle::cone(3.0))
+            .set_parent(enemy);
+        commands.spawn(CollectorParticlesBundle::new(
+            collector,
+            ENEMY_COLOR,
+            &particles,
+        ));
     }
 }

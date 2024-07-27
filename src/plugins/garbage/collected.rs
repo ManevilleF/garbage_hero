@@ -28,10 +28,7 @@ impl Component for Collected {
     fn register_component_hooks(hooks: &mut ComponentHooks) {
         hooks
             .on_add(|mut world, entity, _| {
-                let Some(collected) = world.get::<Self>(entity) else {
-                    log::error!("on_remove hook triggered for {entity:?} without `Collected`");
-                    return;
-                };
+                let collected = world.get::<Self>(entity).unwrap();
                 let collector_entity = collected.collector_entity;
                 let collected_pos = world
                     .get::<GlobalTransform>(entity)
@@ -72,10 +69,7 @@ impl Component for Collected {
                 scale.0 = 0.0;
             })
             .on_remove(|mut world, entity, _| {
-                let Some(collected) = world.get::<Self>(entity) else {
-                    log::error!("on_remove hook triggered for {entity:?} without `Collected`");
-                    return;
-                };
+                let collected = world.get::<Self>(entity).unwrap();
                 if let Some(mut collector) = world.get_mut::<Collector>(collected.collector_entity)
                 {
                     collector.remove(entity);

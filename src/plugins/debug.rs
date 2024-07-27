@@ -8,6 +8,7 @@ use strum::IntoEnumIterator;
 use crate::Health;
 
 use super::{
+    enemies::{SpawnTurret, SpawnWorm},
     garbage::{
         spawn_builds, spawn_some_garbage, AvailableItemBuilds, GarbageAssets, GarbageBundle,
         GarbageItem, SpawnBuild,
@@ -26,7 +27,10 @@ impl Plugin for DebugPlugin {
             bevy::dev_tools::ui_debug_overlay::DebugUiPlugin,
         ))
         .init_resource::<ImageToEgui>()
-        .add_systems(Update, (update_images, commands_ui, players_ui, debug_ui));
+        .add_systems(
+            Update,
+            (update_images, commands_ui, players_ui, debug_ui, enemies_ui),
+        );
     }
 }
 
@@ -189,6 +193,39 @@ fn players_ui(
                     gamepad: Gamepad { id: player_count },
                 },
             }));
+        }
+    });
+}
+
+fn enemies_ui(
+    mut worm_evw: EventWriter<SpawnWorm>,
+    mut turret_evw: EventWriter<SpawnTurret>,
+    mut context: EguiContexts,
+    mut worm_size: Local<usize>,
+    mut pos: Local<Vec2>,
+) {
+    let ctx = context.ctx_mut();
+    if *worm_size == 0 {
+        *worm_size = 5;
+    }
+    egui::Window::new("Enemies").show(ctx, |ui| {
+        ui.horizontal(|ui| {
+            ui.label("Position");
+            egui::DragValue::new(&mut pos.x).ui(ui);
+            egui::DragValue::new(&mut pos.y).ui(ui);
+        });
+        ui.horizontal(|ui| {
+            ui.label("Worm Size");
+            egui::Slider::new(&mut *worm_size, 5..=20).ui(ui);
+        });
+        if ui.button("Spawn Worm").clicked() {
+            worm_evw.send(SpawnWorm {
+                size: *worm_size,
+                position: *pos,
+            });
+        }
+        if ui.button("Spawn Turret").clicked() {
+            turret_evw.send(SpawnTurret { position: *pos });
         }
     });
 }

@@ -73,7 +73,7 @@ fn reset_thrown_items(
     mut commands: Commands,
     items: Query<(Entity, &LinearVelocity), With<ThrownItem>>,
 ) {
-    const TRESHOLD: f32 = 9.0;
+    const TRESHOLD: f32 = 12.0;
 
     for (entity, linvel) in &items {
         if linvel.0.length_squared() <= TRESHOLD {
