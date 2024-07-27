@@ -77,7 +77,7 @@ impl InvisibleMapElementBundle {
 }
 
 fn create_default_ground(mut commands: Commands, assets: Res<MapAssets>) {
-    let offset_x = -MAP_SIZE.x / 2.0 + 50.0;
+    let offset_x = MAP_SIZE.x / 2.0 - 50.0;
     let mut ground = MapElementBundle::new_cube(&assets);
     ground.pbr.transform.translation.x = offset_x;
     ground.pbr.transform.scale = Vec3::new(MAP_SIZE.x - 1.0, 1.0, MAP_SIZE.y - 1.0);

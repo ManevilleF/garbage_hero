@@ -3,7 +3,7 @@ use bevy::prelude::*;
 
 use crate::{
     plugins::{garbage::CollectorConfig, player::Player},
-    GameState,
+    Dead, GameState,
 };
 
 const PLUNGE_HEIGHT: f32 = 25.0;
@@ -135,7 +135,7 @@ fn detect_players(
     time: Res<Time>,
     mut detectors: Query<(&Parent, &mut PlayerDetector, &CollidingEntities)>,
     mut enemies: Query<&mut EnemyMovementState>,
-    players: Query<&GlobalTransform, With<Player>>,
+    players: Query<&GlobalTransform, (With<Player>, Without<Dead>)>,
 ) {
     let dt = time.delta_seconds();
     for (parent, mut detector, collisions) in &mut detectors {

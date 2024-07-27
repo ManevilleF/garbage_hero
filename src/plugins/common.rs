@@ -15,7 +15,7 @@ impl Plugin for CommonPlugin {
             .register_type::<Dead>()
             .add_systems(First, despawn_deads)
             .add_systems(PreUpdate, handle_death)
-            .add_systems(Update, (direct_damage, velocity_damage));
+            .add_systems(Update, (direct_damage, velocity_damage, tick_health));
     }
 }
 
@@ -24,16 +24,30 @@ impl Plugin for CommonPlugin {
 pub struct Health {
     pub current: u16,
     pub max: u16,
+    damage_cooldown: f32,
 }
 
 impl Health {
+    const INVINCIBLE_TIME: f32 = 0.5;
+
     pub const fn new(max: u16) -> Self {
-        Self { current: max, max }
+        Self {
+            current: max,
+            max,
+            damage_cooldown: 0.0,
+        }
+    }
+
+    pub fn tick(&mut self, dt: f32) {
+        self.damage_cooldown += dt;
     }
 
     /// Returns `true` if health is still over 0
     pub fn damage(&mut self, amount: u16) -> bool {
-        self.current = self.current.saturating_sub(amount);
+        if self.damage_cooldown >= Self::INVINCIBLE_TIME {
+            self.current = self.current.saturating_sub(amount);
+            self.damage_cooldown = 0.0;
+        }
         self.current > 0
     }
 
@@ -59,6 +73,13 @@ pub struct Damage(pub u16);
 #[derive(Debug, Component, Reflect)]
 #[reflect(Component)]
 pub struct Dead;
+
+fn tick_health(time: Res<Time>, mut healths: Query<&mut Health, Without<Dead>>) {
+    let dt = time.delta_seconds();
+    for mut health in &mut healths {
+        health.tick(dt);
+    }
+}
 
 fn direct_damage(
     mut events: EventReader<CollisionStarted>,
@@ -92,7 +113,7 @@ fn velocity_damage(
     >,
 ) {
     const VEL_TRESHOLD: f32 = 15.0;
-    const DAMAGE_RATIO: f32 = 0.1;
+    const DAMAGE_RATIO: f32 = 0.2;
 
     for CollisionStarted(a, b) in events.read() {
         let Ok(

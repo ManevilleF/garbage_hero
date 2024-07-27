@@ -1,6 +1,6 @@
 use std::ops::DerefMut;
 
-use super::player::Player;
+use super::{map::MAP_SIZE, player::Player, Dead};
 use avian3d::prelude::PhysicsSet;
 use bevy::{
     core_pipeline::tonemapping::Tonemapping, ecs::system::SystemParam,
@@ -73,7 +73,7 @@ pub fn spawn_camera(mut commands: Commands) {
 
 pub fn follow_players(
     time: Res<Time>,
-    players: Query<&GlobalTransform, With<Player>>,
+    players: Query<&GlobalTransform, (With<Player>, Without<Dead>)>,
     mut cameras: Query<(&mut Transform, &mut Projection), With<GameCamera>>,
 ) {
     let Ok((mut cam_tr, mut projection)) = cameras.get_single_mut() else {
@@ -82,8 +82,8 @@ pub fn follow_players(
     let Projection::Orthographic(projection) = projection.deref_mut() else {
         return;
     };
-    let mut min = Vec2::MAX;
-    let mut max = Vec2::MIN;
+    let mut min = MAP_SIZE;
+    let mut max = -MAP_SIZE;
     for gtr in &players {
         let pos = gtr.translation().xz();
         min = min.min(pos);
@@ -93,7 +93,11 @@ pub fn follow_players(
     // Translation
     let center = (max + min) / 2.0;
     let target = Vec3::new(center.x, 0.0, center.y) + CAM_OFFSET;
-    cam_tr.translation = target;
+    if cam_tr.translation.distance(target) <= 1.0 {
+        cam_tr.translation = target;
+    } else {
+        cam_tr.translation = cam_tr.translation.lerp(target, dt * CAMERA_DECAY_RATE);
+    }
     // Projection
     let size = max - min;
     let target = (size.max_element() * CAM_SCALE_COEF).max(CAM_MIN_SCALE);

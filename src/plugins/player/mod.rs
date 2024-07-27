@@ -23,7 +23,7 @@ use ui::PlayerUiPlugin;
 const MAX_PLAYERS: u8 = 10;
 const PLAYER_RADIUS: f32 = 0.8;
 const PLAYER_HEIGHT: f32 = 1.5;
-const BASE_PLAYER_HEALTH: u16 = 100;
+const BASE_PLAYER_HEALTH: u16 = 200;
 const BASE_SENSOR_STRENGTH: f32 = 10.0;
 
 pub struct PlayerPlugin;
@@ -93,7 +93,8 @@ pub fn spawn_players(
         .iter()
         .next()
         .map(|gtr| gtr.translation())
-        .unwrap_or(Vec3::Y * 3.0);
+        .unwrap_or(Vec3::ZERO)
+        + Vec3::ONE * 3.0;
     for PlayerConnected(player) in connected_evr.read() {
         let color = assets.colors[player.id as usize];
         // Offset
