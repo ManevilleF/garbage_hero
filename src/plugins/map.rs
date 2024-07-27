@@ -25,7 +25,10 @@ pub struct MapElementBundle {
     pub layers: CollisionLayers,
     pub name: Name,
     pub body: RigidBody,
+    pub friction: Friction,
+    pub restitution: Restitution,
 }
+
 #[derive(Bundle)]
 pub struct InvisibleMapElementBundle {
     pub spatial: SpatialBundle,
@@ -33,6 +36,8 @@ pub struct InvisibleMapElementBundle {
     pub layers: CollisionLayers,
     pub name: Name,
     pub body: RigidBody,
+    pub friction: Friction,
+    pub restitution: Restitution,
 }
 
 impl MapElementBundle {
@@ -49,6 +54,8 @@ impl MapElementBundle {
             layers: CollisionLayers::new(ObjectLayer::Map, mask),
             body: RigidBody::Static,
             name: Name::new("Map cube"),
+            friction: Friction::new(0.7),
+            restitution: Restitution::new(0.2),
         }
     }
 }
@@ -63,6 +70,8 @@ impl InvisibleMapElementBundle {
             layers: CollisionLayers::new(ObjectLayer::Map, mask),
             body: RigidBody::Static,
             name: Name::new("Invisible Wall"),
+            friction: Friction::new(0.5),
+            restitution: Restitution::new(0.8),
         }
     }
 }

@@ -52,7 +52,7 @@ impl PlayerSkill {
         match self {
             Self::Collect => 0.0,
             Self::Shoot => 0.05,
-            Self::Dash => 0.5,
+            Self::Dash => 0.3,
             Self::Defend => 0.0,
             Self::Burst => 10.0,
         }
@@ -250,8 +250,8 @@ fn dash_skill(
         if skill.active != Some(PlayerSkill::Dash) {
             continue;
         }
-        let direction = (linvel.0.length_squared() > 1.0)
-            .then(|| linvel.0.normalize())
+        let direction = (linvel.length_squared() > 1.0)
+            .then(|| Vec3::new(linvel.x, 0.0, linvel.z).normalize())
             .unwrap_or(*aim.direction3());
         commands
             .entity(entity)

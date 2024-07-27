@@ -4,6 +4,7 @@ use bevy::prelude::*;
 use crate::plugins::{garbage::CollectorConfig, player::Player};
 
 const PLUNGE_HEIGHT: f32 = 25.0;
+const MAX_DISTANCE: f32 = 100.0;
 
 pub struct EnemyMovementPlugin;
 
@@ -22,6 +23,7 @@ pub struct EnemyMovement {
     elapsed: f32,
     pub speed: f32,
     pub spawn_position: Vec3,
+    pub anchor_position: Vec3,
 }
 
 impl EnemyMovement {
@@ -30,15 +32,26 @@ impl EnemyMovement {
         Self {
             speed,
             spawn_position: position,
+            anchor_position: position,
             elapsed: 0.0,
         }
     }
 }
 
-#[derive(Debug, Component, Reflect, Default, Clone, Copy)]
+#[derive(Debug, Component, Reflect, Clone, Copy)]
 #[reflect(Component)]
 pub struct PlayerDetector {
     last_detection: f32,
+    pub attack_cooldown: f32,
+}
+
+impl PlayerDetector {
+    pub fn new(cooldown: f32) -> Self {
+        Self {
+            last_detection: 0.0,
+            attack_cooldown: cooldown,
+        }
+    }
 }
 
 #[derive(Debug, Component, Reflect, Default, Clone, Copy)]
@@ -68,7 +81,7 @@ fn move_enemy(
                     speed * (2.0 * movement.elapsed).sin() / 2.0,
                 );
                 movement.elapsed += dt;
-                movement.spawn_position + delta
+                movement.anchor_position + delta
             }
             EnemyMovementState::PrepareAttack(target) => 'att: {
                 if position.distance(target) < 1.0 {
@@ -93,10 +106,14 @@ fn move_enemy(
                 position + *dir * speed * 2.0 * dt
             }
             EnemyMovementState::Returning => {
-                movement.spawn_position.x = position.x;
-                movement.spawn_position.z = position.z;
-                movement.elapsed = 0.0;
-                *state = EnemyMovementState::Idle;
+                movement.anchor_position.x = position.x;
+                movement.anchor_position.z = position.z;
+                if movement.anchor_position.distance(movement.spawn_position) > MAX_DISTANCE {
+                    *state = EnemyMovementState::PrepareAttack(movement.spawn_position)
+                } else {
+                    movement.elapsed = 0.0;
+                    *state = EnemyMovementState::Idle;
+                }
                 position
             }
         };
@@ -114,11 +131,10 @@ fn detect_players(
     mut enemies: Query<&mut EnemyMovementState>,
     players: Query<&GlobalTransform, With<Player>>,
 ) {
-    const DELAY: f32 = 5.0;
     let dt = time.delta_seconds();
     for (parent, mut detector, collisions) in &mut detectors {
         detector.last_detection += dt;
-        if detector.last_detection < DELAY {
+        if detector.last_detection < detector.attack_cooldown {
             continue;
         }
         let mut state = enemies.get_mut(parent.get()).unwrap();

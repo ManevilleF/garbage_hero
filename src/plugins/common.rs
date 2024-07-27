@@ -86,16 +86,17 @@ fn velocity_damage(
             &mut Health,
             Option<&Collected>,
             Option<&ThrownItem>,
+            Has<Player>,
         ),
         With<Collider>,
     >,
 ) {
-    const VEL_TRESHOLD: f32 = 10.0;
+    const VEL_TRESHOLD: f32 = 15.0;
     const DAMAGE_RATIO: f32 = 0.1;
 
     for CollisionStarted(a, b) in events.read() {
         let Ok(
-            [(linvel_a, mut health_a, collected_a, thrown_a), (linvel_b, mut health_b, collected_b, thrown_b)],
+            [(linvel_a, mut health_a, collected_a, thrown_a, is_player_a), (linvel_b, mut health_b, collected_b, thrown_b, is_player_b)],
         ) = healths.get_many_mut([*a, *b])
         else {
             // debug ?
@@ -115,6 +116,13 @@ fn velocity_damage(
         {
             continue;
         }
+        // Skip damage between players and non collected/thrown items
+        if (is_player_a && collected_b.is_none() && thrown_b.is_none())
+            || (is_player_b && collected_a.is_none() && thrown_a.is_none())
+        {
+            continue;
+        }
+
         let velocity = linvel_a.map(|v| v.0).unwrap_or(Vec3::ZERO)
             + linvel_b.map(|v| v.0).unwrap_or(Vec3::ZERO);
         let length = velocity.length().floor();

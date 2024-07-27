@@ -11,10 +11,10 @@ use bevy::prelude::*;
 mod assets;
 mod movement;
 
-use assets::EnemyAssets;
+use assets::{EnemyAssets, EnemyAssetsPlugin};
 use movement::{EnemyMovement, EnemyMovementPlugin, EnemyMovementState, PlayerDetector};
 
-const BASE_HEALTH: u16 = 50;
+const BASE_HEALTH: u16 = 100;
 const BASE_DAMAGE: u16 = 10;
 
 use super::{Damage, Health};
@@ -23,8 +23,7 @@ pub struct EnemiesPlugin;
 
 impl Plugin for EnemiesPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(EnemyMovementPlugin)
-            .init_resource::<EnemyAssets>()
+        app.add_plugins((EnemyMovementPlugin, EnemyAssetsPlugin))
             .register_type::<Enemy>();
 
         app.add_systems(Startup, spawn_enemy);
@@ -53,13 +52,13 @@ impl EnemyBundle {
     pub fn new(pos: Vec3, assets: &EnemyAssets, size: usize) -> Self {
         Self {
             pbr: PbrBundle {
-                material: assets.worm_head_mat.clone_weak(),
+                material: assets.worm_head_mat[0].clone_weak(),
                 mesh: assets.worm_head_mesh.clone_weak(),
                 transform: Transform::from_translation(pos),
                 ..default()
             },
             enemy: Enemy,
-            movement: EnemyMovement::new((size * 2) as f32, pos),
+            movement: EnemyMovement::new(size as f32 * 1.5, pos),
             rigidbody: RigidBody::Kinematic,
             scale: GravityScale(0.0),
             collider: assets.worm_head_collider.clone(),
@@ -114,7 +113,7 @@ impl PlayerDetectorBundle {
             sensor: Sensor,
             collider: Collider::cone(15.0, 15.0),
             layers: CollisionLayers::new(ObjectLayer::Enemy, ObjectLayer::Player),
-            detector: PlayerDetector::default(),
+            detector: PlayerDetector::new(3.0),
         }
     }
 }

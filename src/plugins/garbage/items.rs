@@ -35,6 +35,8 @@ pub enum GarbageItem {
 }
 
 impl GarbageItem {
+    pub const MAX_SPEED: f32 = 75.0;
+
     pub const fn base_health(self) -> Health {
         match self {
             Self::Cube => Health::new(10),

@@ -355,9 +355,9 @@ fn update_collected_position(
         let mut i = 0_usize;
         while let Some((tr, mut linvel)) = collected.fetch_next() {
             let target = positions[i];
-            let delta = target - tr.translation;
+            let delta = (target - tr.translation) * Collector::COLLECTED_SPEED;
 
-            linvel.0 = delta * Collector::COLLECTED_SPEED;
+            linvel.0 = delta.clamp_length_max(GarbageItem::MAX_SPEED);
             i += 1;
         }
     }
