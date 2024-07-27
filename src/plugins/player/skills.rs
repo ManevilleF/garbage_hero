@@ -156,7 +156,7 @@ fn update_aim(
                 let mut dir = aim.map_unchanged(|aim| &mut aim.dir);
                 dir.set_if_neq(direction);
             }
-            GameController::Gamepad(_) => {
+            GameController::Gamepad { .. } => {
                 let Some(dir) = action_state
                     .clamped_axis_pair(&PlayerInput::Aim)
                     .map(Vec2::from)

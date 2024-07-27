@@ -11,6 +11,7 @@ use bevy::{
 };
 use leafwing_input_manager::prelude::*;
 use std::fmt::Display;
+use strum::Display;
 
 pub struct PlayerInputPlugin;
 
@@ -25,7 +26,35 @@ impl Plugin for PlayerInputPlugin {
 #[derive(Debug, Clone, Copy, Reflect, PartialEq, Eq, Hash)]
 pub enum GameController {
     KeyBoard,
-    Gamepad(Gamepad),
+    Gamepad {
+        gamepad: Gamepad,
+        category: GamepadCategory,
+    },
+}
+
+#[derive(Debug, Clone, Copy, Reflect, Default, Display, PartialEq, Eq, Hash)]
+pub enum GamepadCategory {
+    Xbox,
+    PlayStation,
+    Steam,
+    #[default]
+    Unknown,
+}
+
+impl GamepadCategory {
+    pub fn from_name(name: &str) -> Self {
+        let name = name.to_lowercase();
+        if name.contains("xbox") {
+            Self::Xbox
+        } else if name.contains("dualshock") || name.contains("ps") || name.contains("playstation")
+        {
+            Self::PlayStation
+        } else if name.contains("steam") {
+            Self::Steam
+        } else {
+            Self::Unknown
+        }
+    }
 }
 
 impl Display for GameController {
@@ -35,7 +64,7 @@ impl Display for GameController {
             "{}",
             match self {
                 Self::KeyBoard => String::from("Keyboard"),
-                Self::Gamepad(gamepad) => format!("Gamepad {}", gamepad.id),
+                Self::Gamepad { gamepad, category } => format!("{category} Gamepad {}", gamepad.id),
             }
         )
     }
@@ -88,7 +117,7 @@ impl PlayerInput {
 
         let mut map = InputMap::default();
         match controller {
-            GameController::Gamepad(gamepad) => {
+            GameController::Gamepad { gamepad, .. } => {
                 map.set_gamepad(gamepad)
                     .insert(Pause, GamepadButtonType::Start)
                     .insert(Move, DualAxis::left_stick())
@@ -134,10 +163,14 @@ pub fn handle_new_controllers(
         players.iter().map(|p| (p.controller, p.id)).collect();
     let new_player_id = || players.values().max().copied().map(|v| v + 1).unwrap_or(0);
     for event in gamepad_evr.read() {
-        let controller = GameController::Gamepad(event.gamepad);
         match &event.connection {
             GamepadConnection::Connected(info) => {
-                log::info!("New controller detected: {controller}: {info:?}");
+                let category = GamepadCategory::from_name(&info.name);
+                let controller = GameController::Gamepad {
+                    gamepad: event.gamepad,
+                    category,
+                };
+                log::info!("New controller detected: {controller}");
                 if !players.contains_key(&controller) {
                     player_connected_evw.send(PlayerConnected(Player {
                         controller,
@@ -146,10 +179,8 @@ pub fn handle_new_controllers(
                 }
             }
             GamepadConnection::Disconnected => {
-                if let Some(player) = players.get(&controller) {
-                    log::info!("Player {player} disconnected");
-                    // TODO: Handle disconnected player
-                }
+                log::info!("A player disconnected");
+                // TODO: Handle disconnected player
             }
         }
     }

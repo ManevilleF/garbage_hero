@@ -1,17 +1,27 @@
 use bevy::{prelude::*, utils::HashMap};
 use leafwing_input_manager::prelude::*;
 
-use crate::plugins::player::{GameController, PlayerInput};
+use crate::plugins::player::{GameController, GamepadCategory, PlayerInput};
 
 const NOT_FOUND_ICON: &str = "kenney_input-prompts/Flairs/flair_disabled.png";
 const NO_INPUT_ICON: &str = "kenney_input-prompts/Flairs/flair_disabled_cross.png";
 const MOUSE_ICON: &str = "kenney_input-prompts/Keyboard&Mouse/mouse_small.png";
-const CONTROLLER_ICON: &str = "kenney_input-prompts/Xbox/controller_xboxseries.png";
 
 #[derive(Component, Debug, Clone)]
 pub struct InputMapIcons {
     pub controller_icon: Handle<Image>,
     pub input_icons: HashMap<PlayerInput, Handle<Image>>,
+}
+
+impl GamepadCategory {
+    pub const fn controller_icon(self) -> &'static str {
+        match self {
+            Self::Xbox => "kenney_input-prompts/Xbox/controller_xboxseries.png",
+            Self::PlayStation => "kenney_input-prompts/PlayStation/controller_playstation5.png",
+            Self::Steam => "kenney_input-prompts/SteamDeck/controller_steamdeck.png",
+            Self::Unknown => "kenney_input-prompts/PlayStation/controller_playstation2.png",
+        }
+    }
 }
 
 impl InputMapIcons {
@@ -22,16 +32,17 @@ impl InputMapIcons {
     ) -> Self {
         let not_found_handle = server.load(NOT_FOUND_ICON);
         let not_input_handle = server.load(NO_INPUT_ICON);
-        let controller_icon = server.load(match controller {
-            GameController::KeyBoard => MOUSE_ICON,
-            GameController::Gamepad(_) => CONTROLLER_ICON,
-        });
+        let (category, icon_path) = match controller {
+            GameController::KeyBoard => (GamepadCategory::Unknown, MOUSE_ICON),
+            GameController::Gamepad { category, .. } => (*category, category.controller_icon()),
+        };
+        let controller_icon = server.load(icon_path);
         let input_icons = map
             .iter()
             .map(|(action, input)| {
                 let icon = if input.is_empty() {
                     not_input_handle.clone()
-                } else if let Some(path) = input_icon(input[0].clone()) {
+                } else if let Some(path) = input_icon(input[0].clone(), category) {
                     server.load(path)
                 } else {
                     not_found_handle.clone()
@@ -46,20 +57,24 @@ impl InputMapIcons {
     }
 }
 
-pub fn input_icon(input: UserInput) -> Option<&'static str> {
+pub fn input_icon(input: UserInput, category: GamepadCategory) -> Option<&'static str> {
     match input {
-        UserInput::Single(i) => single_input_icon(i),
+        UserInput::Single(i) => single_input_icon(i, category),
         UserInput::Chord(_) => None,
-        UserInput::VirtualDPad(p) => virtual_dpad_icon(p),
-        UserInput::VirtualAxis(a) => virtual_axis_icon(a),
+        UserInput::VirtualDPad(p) => virtual_dpad_icon(p, category),
+        UserInput::VirtualAxis(a) => virtual_axis_icon(a, category),
     }
 }
 
-pub fn single_input_icon(input: InputKind) -> Option<&'static str> {
+pub fn single_input_icon(input: InputKind, category: GamepadCategory) -> Option<&'static str> {
     match input {
-        InputKind::GamepadButton(b) => xbox_icon(b),
+        InputKind::GamepadButton(b) => match category {
+            GamepadCategory::Xbox => xbox_icon(b),
+            GamepadCategory::Steam => steamdeck_icon(b),
+            GamepadCategory::PlayStation | GamepadCategory::Unknown => playstation_icon(b),
+        },
         InputKind::SingleAxis(_) => None,
-        InputKind::DualAxis(d) => dual_axis_icon(d),
+        InputKind::DualAxis(d) => dual_axis_icon(d, category),
         InputKind::PhysicalKey(k) => keyboard_icon(k),
         InputKind::Modifier(_) => None,
         InputKind::Mouse(b) => mouse_button_icon(b),
@@ -69,39 +84,71 @@ pub fn single_input_icon(input: InputKind) -> Option<&'static str> {
     }
 }
 
-pub fn virtual_dpad_icon(pad: VirtualDPad) -> Option<&'static str> {
+pub fn virtual_dpad_icon(pad: VirtualDPad, category: GamepadCategory) -> Option<&'static str> {
     let path = if pad == VirtualDPad::arrow_keys() || pad == VirtualDPad::wasd() {
         "kenney_input-prompts/Keyboard&Mouse/keyboard_arrows_all.png"
     } else if pad == VirtualDPad::mouse_motion() {
         "kenney_input-prompts/Keyboard&Mouse/mouse_move.png"
     } else if pad == VirtualDPad::dpad() {
-        "kenney_input-prompts/Xbox/xbox_dpad_all.png"
+        match category {
+            GamepadCategory::Xbox => "kenney_input-prompts/Xbox/xbox_dpad_all.png",
+            GamepadCategory::PlayStation | GamepadCategory::Unknown => {
+                "kenney_input-prompts/PlayStation/playstation_dpad_all.png"
+            }
+            GamepadCategory::Steam => "kenney_input-prompts/SteamDeck/steamdeck_dpad_all.png",
+        }
     } else {
         return None;
     };
     Some(path)
 }
 
-pub fn virtual_axis_icon(axis: VirtualAxis) -> Option<&'static str> {
+pub fn virtual_axis_icon(axis: VirtualAxis, category: GamepadCategory) -> Option<&'static str> {
     let path = if axis == VirtualAxis::ad() || axis == VirtualAxis::horizontal_arrow_keys() {
         "kenney_input-prompts/Keyboard&Mouse/keyboard_arrows_horizontal.png"
     } else if axis == VirtualAxis::ws() || axis == VirtualAxis::vertical_arrow_keys() {
         "kenney_input-prompts/Keyboard&Mouse/keyboard_arrows_vertical.png"
     } else if axis == VirtualAxis::horizontal_dpad() {
-        "kenney_input-prompts/Xbox/xbox_dpad_horizontal.png"
+        match category {
+            GamepadCategory::Xbox => "kenney_input-prompts/Xbox/xbox_dpad_horizontal.png",
+            GamepadCategory::PlayStation | GamepadCategory::Unknown => {
+                "kenney_input-prompts/PlayStation/playstation_dpad_horizontal.png"
+            }
+            GamepadCategory::Steam => {
+                "kenney_input-prompts/SteamDeck/steamdeck_dpad_horizontal.png"
+            }
+        }
     } else if axis == VirtualAxis::vertical_dpad() {
-        "kenney_input-prompts/Xbox/xbox_dpad_vertical.png"
+        match category {
+            GamepadCategory::Xbox => "kenney_input-prompts/Xbox/xbox_dpad_vertical.png",
+            GamepadCategory::PlayStation | GamepadCategory::Unknown => {
+                "kenney_input-prompts/PlayStation/playstation_dpad_vertical.png"
+            }
+            GamepadCategory::Steam => "kenney_input-prompts/SteamDeck/steamdeck_dpad_vertical.png",
+        }
     } else {
         return None;
     };
     Some(path)
 }
 
-pub fn dual_axis_icon(axis: DualAxis) -> Option<&'static str> {
+pub fn dual_axis_icon(axis: DualAxis, category: GamepadCategory) -> Option<&'static str> {
     let path = if axis == DualAxis::left_stick() {
-        "kenney_input-prompts/Xbox/xbox_stick_l.png"
+        match category {
+            GamepadCategory::Xbox => "kenney_input-prompts/Xbox/xbox_stick_l.png",
+            GamepadCategory::PlayStation | GamepadCategory::Unknown => {
+                "kenney_input-prompts/PlayStation/playstation_stick_l.png"
+            }
+            GamepadCategory::Steam => "kenney_input-prompts/SteamDeck/steamdeck_stick_l.png",
+        }
     } else if axis == DualAxis::right_stick() {
-        "kenney_input-prompts/Xbox/xbox_stick_r.png"
+        match category {
+            GamepadCategory::Xbox => "kenney_input-prompts/Xbox/xbox_stick_r.png",
+            GamepadCategory::PlayStation | GamepadCategory::Unknown => {
+                "kenney_input-prompts/PlayStation/playstation_stick_r.png"
+            }
+            GamepadCategory::Steam => "kenney_input-prompts/SteamDeck/steamdeck_stick_r.png",
+        }
     } else if axis == DualAxis::mouse_motion() {
         "kenney_input-prompts/Keyboard&Mouse/mouse_move.png"
     } else {
@@ -114,7 +161,7 @@ pub fn dual_axis_icon(axis: DualAxis) -> Option<&'static str> {
 pub const fn playstation_icon(button: GamepadButtonType) -> Option<&'static str> {
     match button {
         GamepadButtonType::South => Some("kenney_input-prompts/PlayStation/playstation_button_color_cross.png"),
-        GamepadButtonType::East => Some("kenney_input-prompts/PlayStation/playstation_button_color_triangle.png"),
+        GamepadButtonType::East => Some("kenney_input-prompts/PlayStation/playstation_button_color_circle.png"),
         GamepadButtonType::North => Some("kenney_input-prompts/PlayStation/playstation_button_color_triangle.png"),
         GamepadButtonType::West => Some("kenney_input-prompts/PlayStation/playstation_button_color_square.png"),
         GamepadButtonType::LeftTrigger => Some("kenney_input-prompts/PlayStation/playstation_trigger_l1.png"),

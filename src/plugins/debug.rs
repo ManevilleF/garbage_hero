@@ -12,7 +12,7 @@ use super::{
         spawn_builds, spawn_some_garbage, AvailableItemBuilds, GarbageAssets, GarbageBundle,
         GarbageItem, SpawnBuild,
     },
-    player::{ActiveSkill, GameController, Player, PlayerConnected, SkillState},
+    player::{ActiveSkill, GameController, GamepadCategory, Player, PlayerConnected, SkillState},
     ui::input_icons::InputMapIcons,
 };
 
@@ -184,7 +184,10 @@ fn players_ui(
         if ui.button("Spawn fake player").clicked() {
             player_connected_evw.send(PlayerConnected(Player {
                 id: player_count as u8,
-                controller: GameController::Gamepad(Gamepad { id: player_count }),
+                controller: GameController::Gamepad {
+                    category: GamepadCategory::Unknown,
+                    gamepad: Gamepad { id: player_count },
+                },
             }));
         }
     });
