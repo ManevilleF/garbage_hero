@@ -72,8 +72,8 @@ pub fn run() -> AppExit {
     .add_systems(PostUpdate, handle_pause);
     #[cfg(feature = "debug")]
     app.add_plugins(DebugPlugin);
-    #[cfg(feature = "editor")]
-    app.add_plugins(DebugEditorPlugin);
+    #[cfg(feature = "debug_world")]
+    app.add_plugins(bevy_inspector_egui::quick::WorldInspectorPlugin::default());
     #[cfg(feature = "debug_physics")]
     app.add_plugins(avian3d::debug_render::PhysicsDebugPlugin::default());
     app.run()

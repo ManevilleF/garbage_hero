@@ -2,8 +2,6 @@ mod camera;
 mod common;
 #[cfg(feature = "debug")]
 mod debug;
-#[cfg(feature = "editor")]
-mod editor;
 mod enemies;
 mod garbage;
 mod light;
@@ -13,12 +11,10 @@ mod player;
 mod splash;
 mod ui;
 
-pub use camera::{CameraPlugin, GameCamera};
+pub use camera::CameraPlugin;
 pub use common::*;
 #[cfg(feature = "debug")]
 pub use debug::DebugPlugin;
-#[cfg(feature = "editor")]
-pub use editor::DebugEditorPlugin;
 pub use enemies::EnemiesPlugin;
 pub use garbage::GarbagePlugin;
 pub use light::LightPlugin;

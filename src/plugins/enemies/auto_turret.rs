@@ -16,7 +16,7 @@ use std::f32::consts::TAU;
 const BASE_HEALTH: u16 = 100;
 const BASE_DAMAGE: u16 = 10;
 
-const IMPULSE_SPEED: f32 = 50.0;
+const IMPULSE_SPEED: f32 = 100.0;
 const IDLE_TRESHOLD: f32 = 10.0;
 const MIN_ITEMS: usize = 5;
 
@@ -42,6 +42,8 @@ pub struct AutoTurretBundle {
     pub collider: Collider,
     pub layers: CollisionLayers,
     pub restitution: Restitution,
+    pub lin_damping: LinearDamping,
+    pub ang_damping: AngularDamping,
     pub health: Health,
     pub damage: Damage,
     pub name: Name,
@@ -62,6 +64,8 @@ impl AutoTurretBundle {
             collider: assets.collider.clone(),
             layers: CollisionLayers::new(ObjectLayer::Enemy, LayerMask::ALL),
             restitution: Restitution::new(1.0),
+            lin_damping: LinearDamping(1.0),
+            ang_damping: AngularDamping(1.5),
             health: Health::new(BASE_HEALTH),
             damage: Damage(BASE_DAMAGE),
             name: Name::new("Auto Turret"),
@@ -146,7 +150,7 @@ fn spawn_turret(
         collector_bundle.config.enabled = true;
         let collector = commands.spawn(collector_bundle).set_parent(enemy).id();
         commands
-            .spawn(PlayerDetectorBundle::sphere(50.0, 0.5))
+            .spawn(PlayerDetectorBundle::sphere(40.0, 0.5))
             .set_parent(enemy);
         commands.spawn(CollectorParticlesBundle::new(
             collector,

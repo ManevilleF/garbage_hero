@@ -13,11 +13,12 @@ use super::{collector::CollectorConfig, Collected};
 pub struct ThrowPlugin;
 
 const THROW_DAMAGE: u16 = 10;
+const THROW_MIN_TIMER: f32 = 1.0;
 
 impl Plugin for ThrowPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<ThrownItem>()
-            .add_systems(Update, reset_thrown_items)
+            .add_systems(Update, update_thrown_items)
             .add_systems(PostProcessCollisions, filter_thrown_collisions);
     }
 }
@@ -26,6 +27,7 @@ impl Plugin for ThrowPlugin {
 #[reflect(Component)]
 pub struct ThrownItem {
     pub collector_entity: Entity,
+    timer: f32,
 }
 
 impl Component for ThrownItem {
@@ -65,18 +67,24 @@ impl Component for ThrownItem {
 
 impl ThrownItem {
     pub const fn new(collector_entity: Entity) -> Self {
-        Self { collector_entity }
+        Self {
+            collector_entity,
+            timer: 0.0,
+        }
     }
 }
 
-fn reset_thrown_items(
+fn update_thrown_items(
+    time: Res<Time>,
     mut commands: Commands,
-    items: Query<(Entity, &LinearVelocity), With<ThrownItem>>,
+    mut items: Query<(Entity, &mut ThrownItem, &LinearVelocity)>,
 ) {
     const TRESHOLD: f32 = 12.0;
 
-    for (entity, linvel) in &items {
-        if linvel.0.length_squared() <= TRESHOLD {
+    let dt = time.delta_seconds();
+    for (entity, mut thrown, linvel) in &mut items {
+        thrown.timer += dt;
+        if thrown.timer >= THROW_MIN_TIMER && linvel.0.length_squared() <= TRESHOLD {
             commands.entity(entity).remove::<ThrownItem>();
         }
     }
