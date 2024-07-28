@@ -349,7 +349,7 @@ fn update_collected_position(
                 .distribution
                 .points()
                 .iter()
-                .map(|p| center + Vec3::new(p.x, 1.0, p.y))
+                .map(|p| center + Vec3::new(p.x, 0.5, p.y))
                 .collect(),
         };
         let mut i = 0_usize;

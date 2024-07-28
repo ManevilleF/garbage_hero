@@ -66,7 +66,7 @@ fn commands_ui(
         });
         ui.horizontal(|ui| {
             ui.label("turrets");
-            egui::Slider::new(&mut start_game.worm_count, 0..=20).ui(ui);
+            egui::Slider::new(&mut start_game.turret_count, 0..=20).ui(ui);
         });
         if ui.button("Start").clicked() {
             commands.add(*start_game);
