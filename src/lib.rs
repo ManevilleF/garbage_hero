@@ -33,6 +33,12 @@ pub enum ObjectLayer {
 #[derive(Event, Clone, Copy, Default)]
 pub struct PauseGame;
 
+#[derive(Event, Clone, Copy)]
+pub struct StartGame {
+    worm_count: usize,
+    turret_count: usize,
+}
+
 pub fn run() -> AppExit {
     println!("Running {APP_NAME} v{APP_VERSION}");
     let mut app = App::new();
@@ -46,6 +52,7 @@ pub fn run() -> AppExit {
     }))
     .init_state::<GameState>()
     .add_event::<PauseGame>()
+    .add_event::<StartGame>()
     // Built in
     .add_plugins((
         PhysicsPlugins::default(),
@@ -100,4 +107,19 @@ fn handle_pause(
         }
     };
     nextstate.set(new_state);
+}
+
+pub fn clear_all() -> impl FnOnce(&mut World) {
+    |world| {
+        let mut items_q = world.query_filtered::<Entity, With<GarbageItem>>();
+        let entities: Vec<_> = items_q.iter(world).collect();
+        for entity in entities {
+            world.entity_mut(entity).despawn_recursive();
+        }
+        let mut enemies_q = world.query_filtered::<Entity, With<Enemy>>();
+        let entities: Vec<_> = enemies_q.iter(world).collect();
+        for entity in entities {
+            world.entity_mut(entity).despawn_recursive();
+        }
+    }
 }

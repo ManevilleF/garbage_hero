@@ -25,6 +25,10 @@ use rand::{seq::IteratorRandom, thread_rng, Rng};
 use strum::IntoEnumIterator;
 use throw::ThrowPlugin;
 
+use crate::StartGame;
+
+use super::map::MAP_SIZE;
+
 pub struct GarbagePlugin;
 
 impl Plugin for GarbagePlugin {
@@ -39,21 +43,21 @@ impl Plugin for GarbagePlugin {
         .init_resource::<GarbageAssets>()
         .register_type::<GarbageAssets>()
         .register_type::<GarbageItem>()
-        .register_type::<PointDistribution>();
+        .register_type::<PointDistribution>()
+        .add_systems(Update, handle_start_game);
     }
 }
 
-pub fn spawn_some_garbage<S>(amount: usize, origin: Vec3, shape: S) -> impl FnOnce(&mut World)
-where
-    S: ShapeSample<Output = Vec3>,
-{
+pub fn spawn_some_garbage(amount: usize) -> impl FnOnce(&mut World) {
     move |world| {
+        let square = Rectangle::new(MAP_SIZE.x - 2.0, MAP_SIZE.y - 2.0);
         let mut rng = thread_rng();
         let assets = world.resource::<GarbageAssets>();
         let bundles: Vec<_> = (0..amount)
             .map(|_| {
                 let item = GarbageItem::iter().choose(&mut rng).unwrap();
-                let position = origin + shape.sample_interior(&mut rng);
+                let pos = square.sample_interior(&mut rng);
+                let position = Vec3::new(pos.x, 1.0, pos.y);
                 let mut bundle = GarbageBundle::new(item, assets);
                 bundle.pbr.transform.translation = position;
                 bundle
@@ -63,15 +67,16 @@ where
     }
 }
 
-pub fn spawn_builds(amount: usize, origin: Vec3, range: f32) -> impl FnOnce(&mut World) {
+pub fn spawn_builds(amount: usize) -> impl FnOnce(&mut World) {
     move |world| {
+        let square = Rectangle::new(MAP_SIZE.x - 20.0, MAP_SIZE.y - 20.0);
         let mut rng = thread_rng();
         let builds = world.resource::<AvailableItemBuilds>();
         let commands: Vec<_> = (0..amount)
             .map(|_| {
                 let handle = builds.values().choose(&mut rng).unwrap().clone_weak();
-                let pos = Circle::new(range).sample_interior(&mut rng);
-                let position = origin + Vec3::new(pos.x, 1.0, pos.y);
+                let pos = square.sample_interior(&mut rng);
+                let position = Vec3::new(pos.x, 1.0, pos.y);
                 let angle = rng.gen_range(0.0..PI);
                 SpawnBuild {
                     handle,
@@ -84,4 +89,12 @@ pub fn spawn_builds(amount: usize, origin: Vec3, range: f32) -> impl FnOnce(&mut
             command.apply(world);
         }
     }
+}
+
+fn handle_start_game(mut commands: Commands, mut events: EventReader<StartGame>) {
+    if events.read().count() == 0 {
+        return;
+    }
+    commands.add(spawn_some_garbage(100));
+    commands.add(spawn_builds(100));
 }

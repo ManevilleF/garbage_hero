@@ -8,7 +8,7 @@ use crate::{
         camera::CameraParams,
         garbage::{Collector, CollectorConfig, DistributionShape},
     },
-    GameState,
+    Dead, GameState,
 };
 
 use super::{input::PlayerInput, GameController, Player};
@@ -44,7 +44,6 @@ pub enum PlayerSkill {
     Shoot,
     Dash,
     Defend,
-    Burst,
 }
 
 impl PlayerSkill {
@@ -54,7 +53,6 @@ impl PlayerSkill {
             Self::Shoot => 0.05,
             Self::Dash => 0.3,
             Self::Defend => 0.0,
-            Self::Burst => 10.0,
         }
     }
 }
@@ -121,12 +119,15 @@ impl PlayerSkillsBundle {
 
 fn update_aim(
     mut gizmos: Gizmos,
-    mut players: Query<(
-        &mut PlayerAim,
-        &Player,
-        &GlobalTransform,
-        &ActionState<PlayerInput>,
-    )>,
+    mut players: Query<
+        (
+            &mut PlayerAim,
+            &Player,
+            &GlobalTransform,
+            &ActionState<PlayerInput>,
+        ),
+        Without<Dead>,
+    >,
     camera: CameraParams,
 ) {
     for (aim, player, gtr, action_state) in &mut players {
@@ -173,14 +174,24 @@ fn update_aim(
 
 fn update_skills(
     time: Res<Time>,
-    mut players: Query<(&mut SkillState, &mut ActiveSkill, &ActionState<PlayerInput>)>,
+    mut players: Query<(
+        &mut SkillState,
+        &mut ActiveSkill,
+        &ActionState<PlayerInput>,
+        Has<Dead>,
+    )>,
 ) {
     let dt = time.delta_seconds();
-    for (mut state, mut active, input) in &mut players {
+    for (mut state, mut active, input, dead) in &mut players {
         state
             .cooldowns
             .values_mut()
             .for_each(|cooldown| *cooldown = (*cooldown - dt).max(0.0));
+
+        if dead {
+            active.active = None;
+            continue;
+        }
         if let Some(skill) = active.active {
             if !input.pressed(&PlayerInput::Skill(skill)) {
                 active.active = None;

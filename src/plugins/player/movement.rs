@@ -1,4 +1,4 @@
-use crate::{GameState, ObjectLayer};
+use crate::{Dead, GameState, ObjectLayer};
 use avian3d::prelude::*;
 use bevy::prelude::*;
 use leafwing_input_manager::prelude::*;
@@ -66,11 +66,14 @@ impl PlayerMovementBundle {
 
 /// Applies movement input to player controllers.
 pub fn apply_movement(
-    mut controllers: Query<(
-        &mut LinearVelocity,
-        &ActionState<PlayerInput>,
-        &MovementSpeed,
-    )>,
+    mut controllers: Query<
+        (
+            &mut LinearVelocity,
+            &ActionState<PlayerInput>,
+            &MovementSpeed,
+        ),
+        Without<Dead>,
+    >,
     time: Res<Time>,
 ) {
     let dt = time.delta_seconds();

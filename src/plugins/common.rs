@@ -61,6 +61,10 @@ impl Health {
     pub fn ratio(&self) -> f32 {
         self.current as f32 / self.max as f32
     }
+
+    pub fn reset(&mut self) {
+        self.current = self.max;
+    }
 }
 
 #[derive(Debug, Component, Reflect)]

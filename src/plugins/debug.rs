@@ -5,7 +5,7 @@ use bevy_egui::{
 };
 use strum::IntoEnumIterator;
 
-use crate::Health;
+use crate::{clear_all, Health};
 
 use super::{
     enemies::{SpawnTurret, SpawnWorm},
@@ -27,10 +27,7 @@ impl Plugin for DebugPlugin {
             bevy::dev_tools::ui_debug_overlay::DebugUiPlugin,
         ))
         .init_resource::<ImageToEgui>()
-        .add_systems(
-            Update,
-            (update_images, commands_ui, players_ui, debug_ui, enemies_ui),
-        );
+        .add_systems(Update, (update_images, commands_ui, players_ui, debug_ui));
     }
 }
 
@@ -41,6 +38,7 @@ fn debug_ui(mut context: EguiContexts, mut ui_opts: ResMut<UiDebugOptions>) {
     });
 }
 
+#[allow(clippy::too_many_arguments)]
 fn commands_ui(
     mut commands: Commands,
     mut context: EguiContexts,
@@ -48,9 +46,18 @@ fn commands_ui(
     builds: Res<AvailableItemBuilds>,
     mut pos: Local<Vec3>,
     mut rot: Local<f32>,
+    mut worm_size: Local<usize>,
+    mut worm_evw: EventWriter<SpawnWorm>,
+    mut turret_evw: EventWriter<SpawnTurret>,
 ) {
+    if *worm_size == 0 {
+        *worm_size = 5;
+    }
     let ctx = context.ctx_mut();
     egui::Window::new("Commands").show(ctx, |ui| {
+        if ui.button("Clear Map").clicked() {
+            commands.add(clear_all());
+        }
         ui.heading("Garbage");
         egui::ComboBox::from_id_source("Spawn Garbage Item")
             .selected_text("Spawn Garbage")
@@ -62,8 +69,7 @@ fn commands_ui(
                 }
             });
         if ui.button("Spawn 50 garbage items").clicked() {
-            let shape = Cuboid::new(50.0, 5.0, 50.0);
-            commands.add(spawn_some_garbage(50, Vec3::Y * 5.0, shape));
+            commands.add(spawn_some_garbage(50));
         }
         ui.heading("Builds");
         ui.horizontal(|ui| {
@@ -88,11 +94,26 @@ fn commands_ui(
             });
 
         if ui.button("Spawn 10 builds").clicked() {
-            commands.add(spawn_builds(10, *pos, 10.0));
+            commands.add(spawn_builds(10));
         }
 
         if ui.button("Spawn 50 builds").clicked() {
-            commands.add(spawn_builds(50, *pos, 50.0));
+            commands.add(spawn_builds(50));
+        }
+
+        ui.heading("Enemies");
+        ui.horizontal(|ui| {
+            ui.label("Worm Size");
+            egui::Slider::new(&mut *worm_size, 5..=20).ui(ui);
+        });
+        if ui.button("Spawn Worm").clicked() {
+            worm_evw.send(SpawnWorm {
+                size: *worm_size,
+                position: pos.xz(),
+            });
+        }
+        if ui.button("Spawn Turret").clicked() {
+            turret_evw.send(SpawnTurret { position: pos.xz() });
         }
     });
 }
@@ -193,39 +214,6 @@ fn players_ui(
                     gamepad: Gamepad { id: player_count },
                 },
             }));
-        }
-    });
-}
-
-fn enemies_ui(
-    mut worm_evw: EventWriter<SpawnWorm>,
-    mut turret_evw: EventWriter<SpawnTurret>,
-    mut context: EguiContexts,
-    mut worm_size: Local<usize>,
-    mut pos: Local<Vec2>,
-) {
-    let ctx = context.ctx_mut();
-    if *worm_size == 0 {
-        *worm_size = 5;
-    }
-    egui::Window::new("Enemies").show(ctx, |ui| {
-        ui.horizontal(|ui| {
-            ui.label("Position");
-            egui::DragValue::new(&mut pos.x).ui(ui);
-            egui::DragValue::new(&mut pos.y).ui(ui);
-        });
-        ui.horizontal(|ui| {
-            ui.label("Worm Size");
-            egui::Slider::new(&mut *worm_size, 5..=20).ui(ui);
-        });
-        if ui.button("Spawn Worm").clicked() {
-            worm_evw.send(SpawnWorm {
-                size: *worm_size,
-                position: *pos,
-            });
-        }
-        if ui.button("Spawn Turret").clicked() {
-            turret_evw.send(SpawnTurret { position: *pos });
         }
     });
 }

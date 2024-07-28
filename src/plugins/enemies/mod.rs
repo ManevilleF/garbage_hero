@@ -1,7 +1,7 @@
 use std::f32::consts::{FRAC_PI_2, PI};
 
-use super::{player::Player, Dead};
-use crate::ObjectLayer;
+use super::{map::MAP_SIZE, player::Player, Dead};
+use crate::{ObjectLayer, StartGame};
 use avian3d::prelude::*;
 use bevy::prelude::*;
 
@@ -11,6 +11,7 @@ mod worm;
 
 use assets::EnemyAssetsPlugin;
 use auto_turret::AutoTurretPlugin;
+use rand::thread_rng;
 use worm::WormPlugin;
 
 const ENEMY_COLOR: Color = Color::BLACK;
@@ -24,6 +25,7 @@ impl Plugin for EnemiesPlugin {
             .register_type::<TargetPlayer>()
             .add_event::<SpawnTurret>()
             .add_event::<SpawnWorm>()
+            .add_systems(Update, handle_game_start)
             .add_systems(FixedUpdate, detect_players);
     }
 }
@@ -115,4 +117,32 @@ pub struct SpawnWorm {
 #[derive(Event, Reflect)]
 pub struct SpawnTurret {
     pub position: Vec2,
+}
+
+fn handle_game_start(
+    mut events: EventReader<StartGame>,
+    mut spawn_worm_evw: EventWriter<SpawnWorm>,
+    mut spawn_turret_evw: EventWriter<SpawnTurret>,
+) {
+    let Some(StartGame {
+        worm_count,
+        turret_count,
+    }) = events.read().next().copied()
+    else {
+        return;
+    };
+    events.clear();
+    let square = Rectangle::new(MAP_SIZE.x - 20.0, MAP_SIZE.y - 20.0);
+    let mut rng = thread_rng();
+    for i in 0..=worm_count {
+        let position = square.sample_interior(&mut rng);
+        spawn_worm_evw.send(SpawnWorm {
+            size: 10 + i,
+            position,
+        });
+    }
+    for _ in 0..=turret_count {
+        let position = square.sample_interior(&mut rng);
+        spawn_turret_evw.send(SpawnTurret { position });
+    }
 }

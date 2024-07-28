@@ -77,23 +77,21 @@ impl InvisibleMapElementBundle {
 }
 
 fn create_default_ground(mut commands: Commands, assets: Res<MapAssets>) {
-    let offset_x = MAP_SIZE.x / 2.0 - 50.0;
     let mut ground = MapElementBundle::new_cube(&assets);
-    ground.pbr.transform.translation.x = offset_x;
     ground.pbr.transform.scale = Vec3::new(MAP_SIZE.x - 1.0, 1.0, MAP_SIZE.y - 1.0);
     ground.name = Name::new("Ground");
     commands.spawn(ground);
     let mut left = InvisibleMapElementBundle::new_cube();
-    left.spatial.transform.translation = Vec3::new(offset_x - MAP_SIZE.x / 2.0, 0.0, 0.0);
+    left.spatial.transform.translation = Vec3::new(-MAP_SIZE.x / 2.0, 0.0, 0.0);
     left.spatial.transform.scale = Vec3::new(1.0, 100.0, MAP_SIZE.y);
     let mut right = InvisibleMapElementBundle::new_cube();
-    right.spatial.transform.translation = Vec3::new(offset_x + MAP_SIZE.x / 2.0, 0.0, 0.0);
+    right.spatial.transform.translation = Vec3::new(MAP_SIZE.x / 2.0, 0.0, 0.0);
     right.spatial.transform.scale = Vec3::new(1.0, 100.0, MAP_SIZE.y);
     let mut bot = InvisibleMapElementBundle::new_cube();
-    bot.spatial.transform.translation = Vec3::new(offset_x, 0.0, -MAP_SIZE.y / 2.0);
+    bot.spatial.transform.translation = Vec3::new(0.0, 0.0, -MAP_SIZE.y / 2.0);
     bot.spatial.transform.scale = Vec3::new(MAP_SIZE.x, 100.0, 1.0);
     let mut top = InvisibleMapElementBundle::new_cube();
-    top.spatial.transform.translation = Vec3::new(offset_x, 0.0, MAP_SIZE.y / 2.0);
+    top.spatial.transform.translation = Vec3::new(0.0, 0.0, MAP_SIZE.y / 2.0);
     top.spatial.transform.scale = Vec3::new(MAP_SIZE.x, 100.0, 1.0);
     commands.spawn_batch([left, right, top, bot]);
 }

@@ -1,8 +1,10 @@
-use crate::{ObjectLayer, ParticleConfig};
+use crate::{ObjectLayer, ParticleConfig, StartGame};
 
 use super::{
     common::Health,
     garbage::{CollectorBundle, CollectorParticlesBundle},
+    map::MAP_SIZE,
+    Dead,
 };
 use bevy::prelude::*;
 
@@ -40,7 +42,7 @@ impl Plugin for PlayerPlugin {
         .add_event::<PlayerConnected>()
         .register_type::<Player>()
         .register_type::<PlayerConnected>()
-        .add_systems(Update, spawn_players);
+        .add_systems(Update, (spawn_players, handle_start_game));
     }
 }
 
@@ -137,5 +139,21 @@ pub fn spawn_players(
                 &assets,
             ))
             .set_parent(root_entity);
+    }
+}
+
+fn handle_start_game(
+    mut commands: Commands,
+    mut events: EventReader<StartGame>,
+    mut players: Query<(Entity, &mut Health, &mut Transform), With<Player>>,
+) {
+    if events.read().count() == 0 {
+        return;
+    }
+    for (i, (entity, mut health, mut tr)) in players.iter_mut().enumerate() {
+        health.reset();
+        commands.entity(entity).remove::<Dead>();
+        tr.translation.z = -MAP_SIZE.y / 2.0 + 10.0;
+        tr.translation.x = i as f32 * 2.0;
     }
 }

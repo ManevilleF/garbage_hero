@@ -126,8 +126,7 @@ impl PlayerInput {
                     .insert(Skill(Collect), GamepadButtonType::South)
                     .insert(Skill(Shoot), GamepadButtonType::RightTrigger2)
                     .insert(Skill(Defend), GamepadButtonType::LeftTrigger2)
-                    .insert(Skill(Dash), GamepadButtonType::East)
-                    .insert(Skill(Burst), GamepadButtonType::West);
+                    .insert(Skill(Dash), GamepadButtonType::East);
             }
             GameController::KeyBoard => {
                 map.insert(Pause, KeyCode::Escape)
@@ -137,8 +136,7 @@ impl PlayerInput {
                     .insert_one_to_many(Skill(Collect), [KeyCode::ShiftLeft, KeyCode::ShiftRight])
                     .insert(Skill(Shoot), MouseButton::Left)
                     .insert(Skill(Defend), MouseButton::Right)
-                    .insert(Skill(Dash), KeyCode::Space)
-                    .insert(Skill(Burst), KeyCode::KeyQ);
+                    .insert(Skill(Dash), KeyCode::Space);
             }
         }
         map

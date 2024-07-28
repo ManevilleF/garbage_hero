@@ -15,8 +15,8 @@ pub use camera::CameraPlugin;
 pub use common::*;
 #[cfg(feature = "debug")]
 pub use debug::DebugPlugin;
-pub use enemies::EnemiesPlugin;
-pub use garbage::GarbagePlugin;
+pub use enemies::{EnemiesPlugin, Enemy};
+pub use garbage::{GarbageItem, GarbagePlugin};
 pub use light::LightPlugin;
 pub use map::MapPlugin;
 pub use particles::ParticleConfig;
