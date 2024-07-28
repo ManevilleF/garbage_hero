@@ -15,8 +15,6 @@ debug = [
 debug_world = ["debug"]
 
 [dependencies]
-# Physics
-avian3d = "0.1"
 # Enum iter
 strum = { version = "0.26", features = ["derive"] }
 # Input map
@@ -25,6 +23,12 @@ leafwing-input-manager = "0.14"
 rand = "0.8"
 # errors
 thiserror = "1.0"
+
+# Physics
+[dependencies.avian3d]
+version = "0.1"
+default-features = false
+features = ["3d", "f32", "parry-f32", "parallel", "simd"]
 
 [dependencies.bevy_mod_outline]
 version = "0.8"
@@ -38,6 +42,37 @@ features = ["3d"]
 
 [dependencies.bevy]
 version = "0.14"
+default-features = false
+features = [
+    "animation",
+    "bevy_asset",
+    "bevy_state",
+    # "bevy_audio",
+    "bevy_color",
+    "bevy_gilrs",
+    "bevy_scene",
+    "bevy_winit",
+    "bevy_core_pipeline",
+    "bevy_pbr",
+    # "bevy_picking",
+    "bevy_gltf",
+    "bevy_render",
+    # "bevy_sprite",
+    "bevy_text",
+    "bevy_ui",
+    "multi_threaded",
+    "png",
+    # "hdr",
+    # "vorbis",
+    "x11",
+    "bevy_gizmos",
+    # "android_shared_stdcxx",
+    "tonemapping_luts",
+    "smaa_luts",
+    "default_font",
+    # "webgl2",
+    "sysinfo_plugin",
+]
 
 [dependencies.bevy-inspector-egui]
 version = "0.25"
@@ -58,5 +93,6 @@ opt-level = 1
 
 [profile.release]
 codegen-units = 1
-lto = true
+lto = "thin"
 panic = "abort"
+strip = "debuginfo"

@@ -150,7 +150,7 @@ fn spawn_turret(
         collector_bundle.config.enabled = true;
         let collector = commands.spawn(collector_bundle).set_parent(enemy).id();
         commands
-            .spawn(PlayerDetectorBundle::sphere(40.0, 0.5))
+            .spawn(PlayerDetectorBundle::sphere(30.0, 0.5))
             .set_parent(enemy);
         commands.spawn(CollectorParticlesBundle::new(
             collector,

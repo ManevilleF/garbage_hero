@@ -12,11 +12,13 @@ mod movement;
 mod skills;
 mod ui;
 
-use assets::{PlayerAimMarkerBundle, PlayerAssets, PlayerVisualsBundle, PlayerVisualsPlugin};
 pub use input::{GameController, GamepadCategory, PlayerInput};
+#[cfg(feature = "debug")]
+pub use skills::{ActiveSkill, SkillState};
+
+use assets::{PlayerAimMarkerBundle, PlayerAssets, PlayerVisualsBundle, PlayerVisualsPlugin};
 use input::{PlayerInputBundle, PlayerInputPlugin};
 use movement::{PlayerMovementBundle, PlayerMovementPlugin};
-pub use skills::{ActiveSkill, SkillState};
 use skills::{PlayerSkillsBundle, PlayerSkillsPlugin};
 use ui::PlayerUiPlugin;
 
@@ -145,8 +147,8 @@ pub fn reset_players(world: &mut World) {
     let mut entities = Vec::new();
     for (i, (entity, mut health, mut tr)) in players.iter_mut(world).enumerate() {
         health.reset();
-        tr.translation.z = 0.0;
-        tr.translation.x = i as f32 * 2.0;
+        tr.translation.x = 0.0;
+        tr.translation.z = i as f32 * 1.5;
         entities.push(entity);
     }
     for entity in entities {

@@ -123,7 +123,7 @@ pub fn spawn_enemies(worms: usize, turrets: usize, world: &mut World) {
     for i in 0..=worms {
         let position = square.sample_interior(&mut rng);
         world.send_event(SpawnWorm {
-            size: 10 + i,
+            size: 12 + i,
             position,
         });
     }

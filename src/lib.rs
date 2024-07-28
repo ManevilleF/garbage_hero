@@ -110,6 +110,8 @@ pub fn clear_all() -> impl FnOnce(&mut World) {
         let mut entities: Vec<_> = items_q.iter(world).collect();
         let mut enemies_q = world.query_filtered::<Entity, With<Enemy>>();
         entities.extend(enemies_q.iter(world));
+        let mut starters_q = world.query_filtered::<Entity, With<StartGame>>();
+        entities.extend(starters_q.iter(world));
         let mut commands = world.commands();
         for entity in entities {
             commands.entity(entity).despawn_recursive();
@@ -117,7 +119,7 @@ pub fn clear_all() -> impl FnOnce(&mut World) {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Component)]
 pub struct StartGame {
     worm_count: usize,
     turret_count: usize,
@@ -140,7 +142,7 @@ impl Command for StartGame {
         // enemies
         spawn_enemies(self.worm_count, self.turret_count, world);
         // items
-        let amount = (self.turret_count + self.worm_count) * 10;
+        let amount = (self.turret_count + self.worm_count) * 12;
         spawn_builds(amount)(world);
         spawn_some_garbage(amount)(world);
     }

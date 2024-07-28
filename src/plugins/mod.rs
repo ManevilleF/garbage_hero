@@ -18,7 +18,7 @@ pub use debug::DebugPlugin;
 pub use enemies::{spawn_enemies, EnemiesPlugin, Enemy};
 pub use garbage::{spawn_builds, spawn_some_garbage, GarbageItem, GarbagePlugin};
 pub use light::LightPlugin;
-pub use map::MapPlugin;
+pub use map::{spawn_game_starters, MapPlugin};
 pub use particles::ParticleConfig;
 pub use particles::ParticlesPlugin;
 pub use player::{reset_players, PlayerPlugin};

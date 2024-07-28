@@ -30,7 +30,7 @@ pub enum GarbageItem {
 }
 
 impl GarbageItem {
-    pub const MAX_SPEED: f32 = 100.0;
+    pub const MAX_SPEED: f32 = 90.0;
 
     pub fn color(self) -> Color {
         match self {
