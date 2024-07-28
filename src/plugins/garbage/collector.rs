@@ -67,7 +67,9 @@ impl Component for Collector {
             let collected = collector.collected.clone();
             let mut commands = world.commands();
             for entity in collected {
-                commands.entity(entity).remove::<Collected>();
+                if let Some(mut cmd) = commands.get_entity(entity) {
+                    cmd.remove::<Collected>();
+                }
             }
         });
     }

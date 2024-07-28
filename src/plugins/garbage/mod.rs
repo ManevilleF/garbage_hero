@@ -25,8 +25,6 @@ use rand::{seq::IteratorRandom, thread_rng, Rng};
 use strum::IntoEnumIterator;
 use throw::ThrowPlugin;
 
-use crate::StartGame;
-
 use super::map::MAP_SIZE;
 
 pub struct GarbagePlugin;
@@ -43,8 +41,7 @@ impl Plugin for GarbagePlugin {
         .init_resource::<GarbageAssets>()
         .register_type::<GarbageAssets>()
         .register_type::<GarbageItem>()
-        .register_type::<PointDistribution>()
-        .add_systems(Update, handle_start_game);
+        .register_type::<PointDistribution>();
     }
 }
 
@@ -89,12 +86,4 @@ pub fn spawn_builds(amount: usize) -> impl FnOnce(&mut World) {
             command.apply(world);
         }
     }
-}
-
-fn handle_start_game(mut commands: Commands, mut events: EventReader<StartGame>) {
-    if events.read().count() == 0 {
-        return;
-    }
-    commands.add(spawn_some_garbage(100));
-    commands.add(spawn_builds(100));
 }

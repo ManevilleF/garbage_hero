@@ -5,7 +5,7 @@ use bevy_egui::{
 };
 use strum::IntoEnumIterator;
 
-use crate::{clear_all, Health};
+use crate::{clear_all, Health, StartGame};
 
 use super::{
     enemies::{SpawnTurret, SpawnWorm},
@@ -44,9 +44,10 @@ fn commands_ui(
     mut context: EguiContexts,
     assets: Res<GarbageAssets>,
     builds: Res<AvailableItemBuilds>,
-    mut pos: Local<Vec3>,
+    mut pos: Local<Vec2>,
     mut rot: Local<f32>,
     mut worm_size: Local<usize>,
+    mut start_game: Local<StartGame>,
     mut worm_evw: EventWriter<SpawnWorm>,
     mut turret_evw: EventWriter<SpawnTurret>,
 ) {
@@ -57,6 +58,18 @@ fn commands_ui(
     egui::Window::new("Commands").show(ctx, |ui| {
         if ui.button("Clear Map").clicked() {
             commands.add(clear_all());
+        }
+        ui.heading("Game start");
+        ui.horizontal(|ui| {
+            ui.label("worms");
+            egui::Slider::new(&mut start_game.worm_count, 0..=20).ui(ui);
+        });
+        ui.horizontal(|ui| {
+            ui.label("turrets");
+            egui::Slider::new(&mut start_game.worm_count, 0..=20).ui(ui);
+        });
+        if ui.button("Start").clicked() {
+            commands.add(*start_game);
         }
         ui.heading("Garbage");
         egui::ComboBox::from_id_source("Spawn Garbage Item")
@@ -76,7 +89,6 @@ fn commands_ui(
             ui.label("Position");
             egui::DragValue::new(&mut pos.x).ui(ui);
             egui::DragValue::new(&mut pos.y).ui(ui);
-            egui::DragValue::new(&mut pos.z).ui(ui);
         });
         ui.drag_angle(&mut rot);
         egui::ComboBox::from_label("Spawn Item Build")
@@ -86,7 +98,7 @@ fn commands_ui(
                     if ui.button(label).clicked() {
                         commands.add(SpawnBuild {
                             handle: handle.clone_weak(),
-                            position: *pos,
+                            position: Vec3::new(pos.x, 1.0, pos.y),
                             angle: *rot,
                         });
                     }
@@ -109,11 +121,11 @@ fn commands_ui(
         if ui.button("Spawn Worm").clicked() {
             worm_evw.send(SpawnWorm {
                 size: *worm_size,
-                position: pos.xz(),
+                position: *pos,
             });
         }
         if ui.button("Spawn Turret").clicked() {
-            turret_evw.send(SpawnTurret { position: pos.xz() });
+            turret_evw.send(SpawnTurret { position: *pos });
         }
     });
 }

@@ -1,7 +1,9 @@
 #![warn(clippy::all, clippy::nursery)]
 #![allow(dead_code, clippy::type_complexity, clippy::option_if_let_else)]
 use avian3d::prelude::*;
-use bevy::{core_pipeline::experimental::taa::TemporalAntiAliasPlugin, prelude::*};
+use bevy::{
+    core_pipeline::experimental::taa::TemporalAntiAliasPlugin, ecs::world::Command, prelude::*,
+};
 use bevy_mod_outline::{
     AsyncSceneInheritOutlinePlugin, AutoGenerateOutlineNormalsPlugin, OutlinePlugin,
 };
@@ -33,12 +35,6 @@ pub enum ObjectLayer {
 #[derive(Event, Clone, Copy, Default)]
 pub struct PauseGame;
 
-#[derive(Event, Clone, Copy)]
-pub struct StartGame {
-    worm_count: usize,
-    turret_count: usize,
-}
-
 pub fn run() -> AppExit {
     println!("Running {APP_NAME} v{APP_VERSION}");
     let mut app = App::new();
@@ -52,7 +48,6 @@ pub fn run() -> AppExit {
     }))
     .init_state::<GameState>()
     .add_event::<PauseGame>()
-    .add_event::<StartGame>()
     // Built in
     .add_plugins((
         PhysicsPlugins::default(),
@@ -112,14 +107,41 @@ fn handle_pause(
 pub fn clear_all() -> impl FnOnce(&mut World) {
     |world| {
         let mut items_q = world.query_filtered::<Entity, With<GarbageItem>>();
-        let entities: Vec<_> = items_q.iter(world).collect();
-        for entity in entities {
-            world.entity_mut(entity).despawn_recursive();
-        }
+        let mut entities: Vec<_> = items_q.iter(world).collect();
         let mut enemies_q = world.query_filtered::<Entity, With<Enemy>>();
-        let entities: Vec<_> = enemies_q.iter(world).collect();
+        entities.extend(enemies_q.iter(world));
+        let mut commands = world.commands();
         for entity in entities {
-            world.entity_mut(entity).despawn_recursive();
+            commands.entity(entity).despawn_recursive();
         }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct StartGame {
+    worm_count: usize,
+    turret_count: usize,
+}
+
+impl Default for StartGame {
+    fn default() -> Self {
+        Self {
+            worm_count: 2,
+            turret_count: 5,
+        }
+    }
+}
+
+impl Command for StartGame {
+    fn apply(self, world: &mut World) {
+        clear_all()(world);
+        // players
+        reset_players(world);
+        // enemies
+        spawn_enemies(self.worm_count, self.turret_count, world);
+        // items
+        let amount = (self.turret_count + self.worm_count) * 10;
+        spawn_builds(amount)(world);
+        spawn_some_garbage(amount)(world);
     }
 }

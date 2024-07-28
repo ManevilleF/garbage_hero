@@ -106,7 +106,7 @@ impl GarbageBundle {
             },
             rigidbody: RigidBody::Dynamic,
             collider: assets.colliders[collectible as usize].clone(),
-            margin: CollisionMargin(0.04),
+            margin: CollisionMargin(0.02),
             lin_damping: LinearDamping(0.5),
             ang_damping: AngularDamping(1.5),
             layer: CollisionLayers::new(ObjectLayer::Collectible, LayerMask::ALL),

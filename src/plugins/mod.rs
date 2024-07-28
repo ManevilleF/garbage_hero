@@ -15,13 +15,13 @@ pub use camera::CameraPlugin;
 pub use common::*;
 #[cfg(feature = "debug")]
 pub use debug::DebugPlugin;
-pub use enemies::{EnemiesPlugin, Enemy};
-pub use garbage::{GarbageItem, GarbagePlugin};
+pub use enemies::{spawn_enemies, EnemiesPlugin, Enemy};
+pub use garbage::{spawn_builds, spawn_some_garbage, GarbageItem, GarbagePlugin};
 pub use light::LightPlugin;
 pub use map::MapPlugin;
 pub use particles::ParticleConfig;
 pub use particles::ParticlesPlugin;
-pub use player::PlayerPlugin;
+pub use player::{reset_players, PlayerPlugin};
 #[cfg(not(feature = "debug"))]
 pub use splash::SplashScreenPlugin;
 

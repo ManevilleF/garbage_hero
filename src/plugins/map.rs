@@ -2,7 +2,7 @@ use crate::ObjectLayer;
 use avian3d::prelude::*;
 use bevy::prelude::*;
 
-pub const MAP_SIZE: Vec2 = Vec2::new(500.0, 200.);
+pub const MAP_SIZE: Vec2 = Vec2::new(200.0, 200.);
 
 pub struct MapPlugin;
 

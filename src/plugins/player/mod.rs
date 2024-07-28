@@ -1,11 +1,9 @@
-use crate::{ObjectLayer, ParticleConfig, StartGame};
-
 use super::{
     common::Health,
     garbage::{CollectorBundle, CollectorParticlesBundle},
-    map::MAP_SIZE,
     Dead,
 };
+use crate::{ObjectLayer, ParticleConfig};
 use bevy::prelude::*;
 
 mod assets;
@@ -42,7 +40,7 @@ impl Plugin for PlayerPlugin {
         .add_event::<PlayerConnected>()
         .register_type::<Player>()
         .register_type::<PlayerConnected>()
-        .add_systems(Update, (spawn_players, handle_start_game));
+        .add_systems(Update, spawn_players);
     }
 }
 
@@ -142,18 +140,16 @@ pub fn spawn_players(
     }
 }
 
-fn handle_start_game(
-    mut commands: Commands,
-    mut events: EventReader<StartGame>,
-    mut players: Query<(Entity, &mut Health, &mut Transform), With<Player>>,
-) {
-    if events.read().count() == 0 {
-        return;
-    }
-    for (i, (entity, mut health, mut tr)) in players.iter_mut().enumerate() {
+pub fn reset_players(world: &mut World) {
+    let mut players = world.query_filtered::<(Entity, &mut Health, &mut Transform), With<Player>>();
+    let mut entities = Vec::new();
+    for (i, (entity, mut health, mut tr)) in players.iter_mut(world).enumerate() {
         health.reset();
-        commands.entity(entity).remove::<Dead>();
-        tr.translation.z = -MAP_SIZE.y / 2.0 + 10.0;
+        tr.translation.z = 0.0;
         tr.translation.x = i as f32 * 2.0;
+        entities.push(entity);
+    }
+    for entity in entities {
+        world.entity_mut(entity).remove::<Dead>();
     }
 }
