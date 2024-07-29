@@ -330,7 +330,9 @@ fn update_particles(
         let Ok((gtr, collector, config)) = collectors.get(target.0) else {
             log::error!("Collector particles target is invalid");
             spawner.set_active(false);
-            commands.entity(entity).despawn();
+            if let Some(mut cmd) = commands.get_entity(entity) {
+                cmd.despawn();
+            }
             continue;
         };
         tr.translation = gtr.translation();

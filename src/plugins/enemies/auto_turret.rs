@@ -115,7 +115,7 @@ fn behave(
                 }
             }
             TurretState::Shoot(dir) => {
-                if let Some(command) = collector.throw_collected(dir, 40.0) {
+                if let Some(command) = collector.throw_collected(dir, 50.0) {
                     commands.add(command);
                 }
                 *state = TurretState::Idle;

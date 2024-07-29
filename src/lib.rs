@@ -77,7 +77,7 @@ pub fn run() -> AppExit {
     ))
     .add_systems(PostUpdate, handle_pause)
     .add_systems(
-        PostUpdate,
+        Last,
         handle_game_end
             .run_if(resource_exists::<StartGame>)
             .run_if(on_timer(Duration::from_secs(5))),

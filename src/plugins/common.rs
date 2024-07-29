@@ -191,13 +191,11 @@ fn handle_death(mut commands: Commands, entities: Query<(Entity, &Health), Chang
     }
 }
 
-fn despawn_deads(mut commands: Commands, entities: Query<(Entity, Option<&Player>), With<Dead>>) {
+fn despawn_deads(mut commands: Commands, entities: Query<(Entity, Option<&Player>), Added<Dead>>) {
     for (entity, player) in &entities {
         if let Some(player) = player {
-            // TODO
             log::info!("Player died: {}", player.id);
         } else {
-            // TODO: Spawn animation
             commands.entity(entity).despawn_recursive();
         }
     }
