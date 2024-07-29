@@ -14,7 +14,7 @@ use super::{
 };
 
 const PLUNGE_HEIGHT: f32 = 25.0;
-const MAX_DISTANCE: f32 = 100.0;
+const MAX_DISTANCE: f32 = 70.0;
 
 const BASE_HEALTH: u16 = 100;
 const BASE_DAMAGE: u16 = 20;

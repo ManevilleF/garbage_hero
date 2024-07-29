@@ -48,6 +48,7 @@ pub fn run() -> AppExit {
     }))
     .init_state::<GameState>()
     .add_event::<PauseGame>()
+    .register_type::<StartGame>()
     // Built in
     .add_plugins((
         PhysicsPlugins::default(),
@@ -116,10 +117,14 @@ pub fn clear_all() -> impl FnOnce(&mut World) {
         for entity in entities {
             commands.entity(entity).despawn_recursive();
         }
+        let mut animations = world.query::<&mut AnimationPlayer>();
+        for mut anim in animations.iter_mut(world) {
+            anim.rewind_all();
+        }
     }
 }
 
-#[derive(Clone, Copy, Component)]
+#[derive(Clone, Copy, Component, Reflect)]
 pub struct StartGame {
     worm_count: usize,
     turret_count: usize,

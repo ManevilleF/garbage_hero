@@ -13,7 +13,7 @@ use bevy::prelude::*;
 use rand::{thread_rng, Rng};
 use std::f32::consts::TAU;
 
-const BASE_HEALTH: u16 = 50;
+const BASE_HEALTH: u16 = 40;
 const BASE_DAMAGE: u16 = 10;
 
 const IMPULSE_SPEED: f32 = 60.0;

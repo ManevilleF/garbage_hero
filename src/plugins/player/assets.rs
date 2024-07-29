@@ -1,7 +1,11 @@
-use std::f32::consts::PI;
+use std::{f32::consts::PI, time::Duration};
 
-use super::{skills::PlayerAim, MAX_PLAYERS};
+use crate::Dead;
+
+use super::{skills::PlayerAim, Player, MAX_PLAYERS};
+use avian3d::prelude::LinearVelocity;
 use bevy::{
+    animation::RepeatAnimation,
     pbr::{NotShadowCaster, NotShadowReceiver},
     prelude::*,
 };
@@ -13,7 +17,15 @@ impl Plugin for PlayerVisualsPlugin {
         app.init_resource::<PlayerAssets>()
             .register_type::<PlayerAssets>()
             .register_type::<PlayerAimMarker>()
-            .add_systems(PostUpdate, update_marker);
+            .register_type::<CharacterAnimations>()
+            .register_type::<RootPlayer>()
+            .add_systems(Update, (setup_animations, player_animations))
+            .add_systems(
+                PostUpdate,
+                update_marker
+                    .after(avian3d::prelude::PhysicsSet::Sync)
+                    .before(TransformSystem::TransformPropagate),
+            );
     }
 }
 
@@ -35,6 +47,53 @@ impl PlayerVisualsBundle {
                 ..default()
             },
         }
+    }
+}
+
+#[derive(Component, Debug, Reflect)]
+pub struct RootPlayer(Entity);
+
+fn setup_animations(
+    mut commands: Commands,
+    assets: Res<PlayerAssets>,
+    players: Query<(Entity, &Player)>,
+    ancestors: Query<&Parent>,
+    animations: Query<Entity, Added<AnimationPlayer>>,
+) {
+    for entity in &animations {
+        let ancestors = ancestors.iter_ancestors(entity);
+        let Some((root, player)) = players.iter_many(ancestors).next() else {
+            continue;
+        };
+        commands.entity(entity).insert((
+            assets.animation_graphs[player.id as usize].clone_weak(),
+            assets.animations[player.id as usize].clone(),
+            RootPlayer(root),
+        ));
+    }
+}
+
+fn player_animations(
+    players: Query<(Has<Dead>, &LinearVelocity), With<Player>>,
+    mut animations: Query<(&mut AnimationPlayer, &CharacterAnimations, &RootPlayer)>,
+) {
+    for (mut anim_player, animations, root) in &mut animations {
+        let (is_dead, linvel) = players.get(root.0).unwrap();
+        if is_dead {
+            anim_player.stop(animations.idle);
+            anim_player.stop(animations.running);
+            anim_player.play(animations.death);
+        } else if linvel.length_squared() > 1.0 {
+            anim_player
+                .animation_mut(animations.idle)
+                .map(|a| a.rewind().set_repeat(RepeatAnimation::Never));
+            anim_player.play(animations.running).repeat();
+        } else {
+            anim_player
+                .animation_mut(animations.running)
+                .map(|a| a.rewind().set_repeat(RepeatAnimation::Never));
+            anim_player.play(animations.idle).repeat();
+        };
     }
 }
 
@@ -83,11 +142,20 @@ fn update_marker(
     }
 }
 
+#[derive(Debug, Component, Reflect, Clone)]
+pub struct CharacterAnimations {
+    pub idle: AnimationNodeIndex,
+    pub running: AnimationNodeIndex,
+    pub death: AnimationNodeIndex,
+}
+
 #[derive(Resource, Reflect)]
 #[reflect(Resource)]
 pub struct PlayerAssets {
     pub colors: [Color; MAX_PLAYERS as usize],
     pub scenes: [Handle<Scene>; MAX_PLAYERS as usize],
+    pub animation_graphs: [Handle<AnimationGraph>; MAX_PLAYERS as usize],
+    pub animations: [CharacterAnimations; MAX_PLAYERS as usize],
     pub marker_mats: [Handle<StandardMaterial>; MAX_PLAYERS as usize],
     pub marker_mesh: Handle<Mesh>,
 }
@@ -122,26 +190,53 @@ impl FromWorld for PlayerAssets {
             Vec3::new(0.5, 0.0, -2.0),
         ));
         let server = world.resource::<AssetServer>();
-        let scenes = [
-            "character-male-e",
-            "character-female-e",
-            "character-male-b",
-            "character-female-b",
-            "character-male-c",
-            "character-female-c",
-            "character-male-d",
-            "character-female-d",
-            "character-male-f",
-            "character-female-f",
-        ]
-        .map(|name| {
-            server.load(format!(
-                "kenney_mini-characters/Models/glb/{name}.glb#Scene0"
-            ))
+        let characters = [
+            "kenney_mini-characters/Models/glb/character-male-e.glb",
+            "kenney_mini-characters/Models/glb/character-female-e.glb",
+            "kenney_mini-characters/Models/glb/character-male-b.glb",
+            "kenney_mini-characters/Models/glb/character-female-b.glb",
+            "kenney_mini-characters/Models/glb/character-male-c.glb",
+            "kenney_mini-characters/Models/glb/character-female-c.glb",
+            "kenney_mini-characters/Models/glb/character-male-d.glb",
+            "kenney_mini-characters/Models/glb/character-female-d.glb",
+            "kenney_mini-characters/Models/glb/character-male-f.glb",
+            "kenney_mini-characters/Models/glb/character-female-f.glb",
+        ];
+        let scenes = characters.map(|path| server.load(format!("{path}#Scene0")));
+        let mut animation_graphs: [_; MAX_PLAYERS as usize] =
+            std::array::from_fn(|_| AnimationGraph::new());
+        let animations = std::array::from_fn(|i| {
+            let path = characters[i];
+            let graph = &mut animation_graphs[i];
+            let idle = graph.add_clip(
+                server.load(GltfAssetLabel::Animation(1).from_asset(path)),
+                1.0,
+                graph.root,
+            );
+            let running = graph.add_clip(
+                server.load(GltfAssetLabel::Animation(3).from_asset(path)),
+                1.0,
+                graph.root,
+            );
+            let death = graph.add_clip(
+                server.load(GltfAssetLabel::Animation(9).from_asset(path)),
+                1.0,
+                graph.root,
+            );
+
+            CharacterAnimations {
+                idle,
+                running,
+                death,
+            }
         });
+        let mut graphs = world.resource_mut::<Assets<AnimationGraph>>();
+        let animation_graphs = animation_graphs.map(|graph| graphs.add(graph));
         Self {
             colors,
             scenes,
+            animations,
+            animation_graphs,
             marker_mats,
             marker_mesh,
         }
