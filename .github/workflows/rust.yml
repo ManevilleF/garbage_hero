@@ -69,6 +69,16 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-clippy-stable-${{ hashFiles('**/Cargo.toml') }}
+      - name: Install alsa udev and gtk
+        shell: bash
+        run: >
+          sudo apt-get update;
+          sudo apt-get install
+          --no-install-recommends -y
+          libasound2-dev
+          libudev-dev
+          libgtk-3-dev
+        if: runner.os == 'Linux'
       - name: Run clippy default check
         run: cargo clippy --all --tests -- -D warnings
       - name: Run clippy all features check

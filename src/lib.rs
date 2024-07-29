@@ -121,10 +121,11 @@ pub fn clear_all() -> impl FnOnce(&mut World) {
         for mut anim in animations.iter_mut(world) {
             anim.rewind_all();
         }
+        world.remove_resource::<StartGame>();
     }
 }
 
-#[derive(Clone, Copy, Component, Reflect)]
+#[derive(Clone, Copy, Component, Resource, Reflect)]
 pub struct StartGame {
     worm_count: usize,
     turret_count: usize,
@@ -148,5 +149,7 @@ impl Command for StartGame {
         spawn_enemies(self.worm_count, self.turret_count, world);
         // items
         spawn_builds(100, None, None)(world);
+        // Setup current game
+        world.insert_resource(self)
     }
 }
