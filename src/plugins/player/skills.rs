@@ -51,7 +51,7 @@ impl PlayerSkill {
         match self {
             Self::Collect => 0.0,
             Self::Shoot => 0.05,
-            Self::Dash => 0.3,
+            Self::Dash => 0.5,
             Self::Defend => 0.0,
         }
     }
@@ -201,7 +201,7 @@ fn update_skills(
             }
         }
         for (skill, cooldown) in &state.cooldowns {
-            if *cooldown <= 0.0 && input.just_pressed(&PlayerInput::Skill(*skill)) {
+            if *cooldown <= 0.0 && input.pressed(&PlayerInput::Skill(*skill)) {
                 active.active = Some(*skill);
                 break;
             }
@@ -242,7 +242,7 @@ fn throw_skill(
             continue;
         }
         for collector in collectors.iter_many(children) {
-            if let Some(command) = collector.throw_collected(aim.direction2(), 50.0) {
+            if let Some(command) = collector.throw_collected(aim.direction2(), 70.0) {
                 commands.add(command);
             } else {
                 log::info!("Player {}, Nothing to shoot", player.id);

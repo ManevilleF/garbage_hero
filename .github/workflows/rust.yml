@@ -1,0 +1,49 @@
+name: Rust
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0 # CI builds from scratch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: build
+        run: cargo build --verbose
+      - name: build with all features
+        run: cargo build --all-features --verbose
+      - name: build without default features
+        run: cargo build --no-default-features --verbose
+
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: "rustfmt"
+      - name: Check Formatting
+        run: cargo fmt --all -- --check
+
+  clippy:
+    needs: [ build, fmt ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - name: Run clippy default check
+        run: cargo clippy --all --tests -- -D warnings
+      - name: Run clippy all features check
+        run: cargo clippy --all-features --all --tests -- -D warnings
+      - name: Run clippy no default features check
+        run: cargo clippy --no-default-features --all --tests -- -D warnings

@@ -1,0 +1,57 @@
+name: Publish
+
+on:
+  release:
+    types: [created]
+  # Allows running this workflow manually from the Actions tab
+  workflow_dispatch:
+
+env:
+  PACKAGE: garbage_project
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          [
+            x86_64-unknown-linux-gnu,
+            x86_64-pc-windows-msvc,
+            aarch64-apple-darwin,
+            x86_64-apple-darwin,
+          ]
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Create Target dir
+        run: |
+          mkdir ${{ matrix.target }}
+          cp -r assets ${{ matrix.target }}
+      - name: Release Build
+        run: cargo build --release --target ${{ matrix.target }}
+      - name: Move Build
+        run: cp target/${{ matrix.target }}/release/${{ env.PACKAGE }} ${{ matrix.target }}
+      - name: Build zip
+        uses: thedoctor0/zip-release@0.7.6
+        with:
+          type: 'zip'
+          path: ${{ matrix.target }}
+          filename: '${{ env.PACKAGE }}_${{ matrix.target }}.zip'
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PACKAGE }}_${{ matrix.target }}
+          path: ${{ env.PACKAGE }}_${{ matrix.target }}.zip
+          if-no-files-found: 'error'

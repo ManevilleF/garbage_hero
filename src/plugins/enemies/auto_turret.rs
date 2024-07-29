@@ -16,7 +16,7 @@ use std::f32::consts::TAU;
 const BASE_HEALTH: u16 = 50;
 const BASE_DAMAGE: u16 = 10;
 
-const IMPULSE_SPEED: f32 = 100.0;
+const IMPULSE_SPEED: f32 = 60.0;
 const IDLE_TRESHOLD: f32 = 10.0;
 const MIN_ITEMS: usize = 5;
 
@@ -105,7 +105,7 @@ fn behave(
                 }
             }
             TurretState::Shoot(dir) => {
-                if let Some(command) = collector.throw_collected(dir, 50.0) {
+                if let Some(command) = collector.throw_collected(dir, 40.0) {
                     commands.add(command);
                 }
                 *state = TurretState::Idle;
@@ -146,7 +146,7 @@ fn spawn_turret(
             ))
             .id();
         let mut collector_bundle =
-            CollectorBundle::growing(5.0, 2.0, ENEMY_COLOR, 10, ObjectLayer::Enemy);
+            CollectorBundle::growing(5.0, 3.0, ENEMY_COLOR, 6, ObjectLayer::Enemy);
         collector_bundle.config.enabled = true;
         let collector = commands.spawn(collector_bundle).set_parent(enemy).id();
         commands
