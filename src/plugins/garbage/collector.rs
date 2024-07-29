@@ -296,14 +296,15 @@ impl Collector {
                 .get::<ColliderMassProperties>(entity)
                 .map(|p| p.mass.0)
                 .unwrap_or(1.0);
-            let collected = world.get::<Collected>(entity).unwrap();
-            let collector_entity = collected.collector_entity;
-            let mut entity_cmd = world.entity_mut(entity);
-            entity_cmd.remove::<Collected>().insert((
-                LinearVelocity::default(),
-                ExternalImpulse::new(direction * force * mass),
-                ThrownItem::new(collector_entity),
-            ));
+            if let Some(collected) = world.get::<Collected>(entity) {
+                let collector_entity = collected.collector_entity;
+                let mut entity_cmd = world.entity_mut(entity);
+                entity_cmd.remove::<Collected>().insert((
+                    LinearVelocity::default(),
+                    ExternalImpulse::new(direction * force * mass),
+                    ThrownItem::new(collector_entity),
+                ));
+            }
         })
     }
 }

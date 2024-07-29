@@ -1,8 +1,11 @@
 #![warn(clippy::all, clippy::nursery)]
 #![allow(dead_code, clippy::type_complexity, clippy::option_if_let_else)]
+use std::time::Duration;
+
 use avian3d::prelude::*;
 use bevy::{
     core_pipeline::experimental::taa::TemporalAntiAliasPlugin, ecs::world::Command, prelude::*,
+    time::common_conditions::on_timer,
 };
 use bevy_mod_outline::{
     AsyncSceneInheritOutlinePlugin, AutoGenerateOutlineNormalsPlugin, OutlinePlugin,
@@ -72,7 +75,13 @@ pub fn run() -> AppExit {
         #[cfg(not(feature = "debug"))]
         SplashScreenPlugin,
     ))
-    .add_systems(PostUpdate, handle_pause);
+    .add_systems(PostUpdate, handle_pause)
+    .add_systems(
+        PostUpdate,
+        handle_game_end
+            .run_if(resource_exists::<StartGame>)
+            .run_if(on_timer(Duration::from_secs(5))),
+    );
     #[cfg(feature = "debug")]
     app.add_plugins(DebugPlugin);
     #[cfg(feature = "debug_world")]
@@ -151,5 +160,28 @@ impl Command for StartGame {
         spawn_builds(100, None, None)(world);
         // Setup current game
         world.insert_resource(self)
+    }
+}
+
+pub fn handle_game_end(
+    mut commands: Commands,
+    enemies: Query<(), With<Enemy>>,
+    players: Query<(), (With<Player>, Without<Dead>)>,
+) {
+    let ended = {
+        if enemies.iter().count() == 0 {
+            println!("WIN");
+            true
+        } else if players.iter().count() == 0 {
+            println!("LOOSE");
+            true
+        } else {
+            false
+        }
+    };
+    if ended {
+        commands.add(clear_all());
+        commands.add(reset_players);
+        commands.add(spawn_game_starters);
     }
 }

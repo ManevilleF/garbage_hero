@@ -20,7 +20,7 @@ pub use garbage::{spawn_builds, spawn_some_garbage, GarbageItem, GarbagePlugin};
 pub use light::LightPlugin;
 pub use map::{spawn_game_starters, MapPlugin};
 pub use particles::{ParticleConfig, ParticlesPlugin};
-pub use player::{reset_players, PlayerPlugin};
+pub use player::{reset_players, Player, PlayerPlugin};
 #[cfg(not(feature = "debug"))]
 pub use splash::SplashScreenPlugin;
 
