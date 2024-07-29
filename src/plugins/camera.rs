@@ -66,8 +66,6 @@ pub fn spawn_camera(mut commands: Commands) {
         Name::new("Game Camera"),
         GameCamera,
         IsDefaultUiCamera,
-        #[cfg(feature = "editor")]
-        transform_gizmo_bevy::GizmoCamera,
     ));
 }
 

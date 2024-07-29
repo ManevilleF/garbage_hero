@@ -120,14 +120,14 @@ pub struct SpawnTurret {
 pub fn spawn_enemies(worms: usize, turrets: usize, world: &mut World) {
     let square = Rectangle::new(MAP_SIZE.x - 20.0, MAP_SIZE.y - 20.0);
     let mut rng = thread_rng();
-    for i in 0..=worms {
+    for i in 0..worms {
         let position = square.sample_interior(&mut rng);
         world.send_event(SpawnWorm {
             size: 12 + i,
             position,
         });
     }
-    for _ in 0..=turrets {
+    for _ in 0..turrets {
         let position = square.sample_interior(&mut rng);
         world.send_event(SpawnTurret { position });
     }

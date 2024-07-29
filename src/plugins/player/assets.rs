@@ -1,4 +1,4 @@
-use std::{f32::consts::PI, time::Duration};
+use std::f32::consts::PI;
 
 use crate::Dead;
 
