@@ -67,7 +67,7 @@ jobs:
         run: cargo build --release --target ${{ matrix.target }}
       - name: Move Build
         run: cp target/${{ matrix.target }}/release/${{ env.PACKAGE }}${{ matrix.ext }} ${{ matrix.target }}
-        if: ${{ matrix.target }} != "wasm32-unknown-unknown"
+        if: matrix.target != 'wasm32-unknown-unknown'
       - name: Wasm bindgen
         run: |
           cargo install wasm-opt
@@ -75,7 +75,7 @@ jobs:
           cp ${{ matrix.target}}/${{ env.package }}.wasm ${{ matrix.target }}/input.wasm
           wasm-opt -O -ol 100 -s 100 -o ${{ matrix.target}}/${{ env.package }}.wasm ${{ matrix.target}}/input.wasm
           cp index.html ${{ matrix.target }}/
-        if: ${{ matrix.target }} == "wasm32-unknown-unknown"
+        if: matrix.target == 'wasm32-unknown-unknown'
       - name: Build zip
         uses: thedoctor0/zip-release@0.7.6
         with:
