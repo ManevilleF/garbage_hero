@@ -1,6 +1,6 @@
 use std::f32::consts::FRAC_PI_4;
 
-use crate::{ObjectLayer, StartGame};
+use crate::{spawn_some_garbage, ObjectLayer, StartGame};
 use avian3d::prelude::*;
 use bevy::{
     math::Affine2,
@@ -219,6 +219,7 @@ pub fn spawn_game_starters(world: &mut World) {
         NotShadowCaster,
         NotShadowReceiver,
     ));
+    spawn_some_garbage(50, Some(MAP_SIZE / 2.0), None)(world);
 }
 
 #[derive(Debug, Resource, Reflect)]
