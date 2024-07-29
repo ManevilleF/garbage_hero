@@ -1,0 +1,29 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Garbage Project</title>
+</head>
+
+<body>
+    <canvas id="game"></canvas>
+
+    <script type="module">
+        import init from './wasm/garbage_project.js';
+
+        async function run() {
+            await init().catch(error => {
+                if (!error.message.startsWith("Using exceptions for control flow, don't mind me. This isn't actually an error!")) {
+                    throw error;
+                }
+            });
+        }
+
+        document.body.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+    </script>
+</body>
+
+</html>

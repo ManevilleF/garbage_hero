@@ -74,6 +74,7 @@ jobs:
           wasm-bindgen --out-dir ${{ matrix.target }} --target web "target/${{ matrix.target }}/release/${{ env.package }}.wasm"
           cp ${{ matrix.target}}/${{ env.package }}.wasm ${{ matrix.target }}/input.wasm
           wasm-opt -O -ol 100 -s 100 -o ${{ matrix.target}}/${{ env.package }}.wasm ${{ matrix.target}}/input.wasm
+          cp index.html ${{ matrix.target }}/
         if: ${{ matrix.target }} == "wasm32-unknown-unknown"
       - name: Build zip
         uses: thedoctor0/zip-release@0.7.6
