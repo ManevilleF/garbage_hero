@@ -109,13 +109,15 @@ fn filter_thrown_collisions(
             }
         }
 
-        // If both a thrown item and a collected item are found, compare their collector_entity fields
+        // If both a thrown item and a collected item are found, compare their
+        // collector_entity fields
         if let (Some(thrown_collector), Some(collected_collector)) =
             (thrown_item_collector, collected_item_collector)
         {
             thrown_collector != collected_collector
         } else {
-            // If either is None, we don't have a match and thus don't filter out the collision
+            // If either is None, we don't have a match and thus don't filter out the
+            // collision
             true
         }
     });

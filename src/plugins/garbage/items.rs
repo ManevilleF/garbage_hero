@@ -1,7 +1,6 @@
 use crate::{plugins::particles::DeathEffect, Health, ObjectLayer};
 use avian3d::prelude::*;
-use bevy::color::palettes::css::*;
-use bevy::prelude::*;
+use bevy::{color::palettes::css::*, prelude::*};
 use strum::{Display, EnumIter, IntoEnumIterator};
 
 #[derive(Debug, Copy, Clone, Component, EnumIter, Reflect, Display)]

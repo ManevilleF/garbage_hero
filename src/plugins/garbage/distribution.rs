@@ -10,7 +10,8 @@ pub enum DistributionShape {
     Arc,
 }
 
-/// Computes the ideal circle radius for `amount` of points separated by `max_distance`
+/// Computes the ideal circle radius for `amount` of points separated by
+/// `max_distance`
 ///
 /// # Arguments
 ///
@@ -20,7 +21,8 @@ pub enum DistributionShape {
 ///
 /// # Returns
 ///
-/// * The calculated radius which ensures the points are evenly distributed around the circle.
+/// * The calculated radius which ensures the points are evenly distributed
+///   around the circle.
 fn radius(min_radius: f32, max_distance: f32, amount: usize) -> f32 {
     let circumference = amount as f32 * max_distance;
     let calculated_radius = circumference / TAU;
@@ -63,8 +65,8 @@ pub struct PointDistribution {
 impl PointDistribution {
     #[must_use]
     #[inline]
-    /// Constructs a new circular distribution of minimum radius `min_radius` and
-    /// `max_distance` between points
+    /// Constructs a new circular distribution of minimum radius `min_radius`
+    /// and `max_distance` between points
     pub const fn new(min_radius: f32, max_distance: f32) -> Self {
         Self {
             min_radius,
@@ -88,7 +90,8 @@ impl PointDistribution {
         self.points.is_empty()
     }
 
-    /// Updates the amount of points in the distribution, effectively updating the points caches
+    /// Updates the amount of points in the distribution, effectively updating
+    /// the points caches
     ///
     /// # Arguments
     ///
@@ -153,7 +156,8 @@ impl PointDistribution {
         &self.points
     }
 
-    /// Finds the closest point to a given direction in the circular distribution.
+    /// Finds the closest point to a given direction in the circular
+    /// distribution.
     ///
     /// # Arguments
     ///

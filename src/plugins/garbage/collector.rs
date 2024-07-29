@@ -209,7 +209,8 @@ impl Collector {
     /// # Arguments
     ///
     /// * `radius` - The radius of the circular path (m).
-    /// * `dt` - The time interval over which to calculate the rotation angle (s).
+    /// * `dt` - The time interval over which to calculate the rotation angle
+    ///   (s).
     ///
     /// # Returns
     ///
@@ -283,7 +284,10 @@ impl Collector {
     pub fn throw_collected(&self, direction: Dir2, force: f32) -> Option<impl FnOnce(&mut World)> {
         let (index, _) = self.distribution.find_closest_aligned_point(direction)?;
         let Some(entity) = self.collected.get(index).copied() else {
-            log::error!("Collector and circular distribution are out of sync, No entity found at index {index:?}");
+            log::error!(
+                "Collector and circular distribution are out of sync, No entity found at index \
+                 {index:?}"
+            );
             return None;
         };
         let direction = Vec3::new(direction.x, 0.0, direction.y);
