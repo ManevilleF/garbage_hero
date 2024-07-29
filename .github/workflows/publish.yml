@@ -70,6 +70,7 @@ jobs:
         if: matrix.target != 'wasm32-unknown-unknown'
       - name: Wasm bindgen
         run: |
+          cargo install wasm-bindgen-cli
           cargo install wasm-opt
           wasm-bindgen --out-dir ${{ matrix.target }} --target web "target/${{ matrix.target }}/release/${{ env.package }}.wasm"
           cp ${{ matrix.target}}/${{ env.package }}.wasm ${{ matrix.target }}/input.wasm
