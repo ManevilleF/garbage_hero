@@ -71,7 +71,7 @@ impl Invincible {
         self.0 > 0.0
     }
 
-    pub fn player() -> Self {
+    pub const fn player() -> Self {
         Self(0.1)
     }
 }
