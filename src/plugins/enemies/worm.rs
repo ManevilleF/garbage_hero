@@ -1,5 +1,6 @@
 use avian3d::prelude::*;
 use bevy::prelude::*;
+use bevy_mod_outline::{OutlineBundle, OutlineVolume};
 
 use crate::{
     plugins::{
@@ -48,6 +49,7 @@ pub struct WormBundle {
     pub damage: Damage,
     pub name: Name,
     pub death: DeathEffect,
+    pub outline: OutlineBundle,
 }
 
 impl WormBundle {
@@ -72,6 +74,14 @@ impl WormBundle {
             death: DeathEffect {
                 color: Color::BLACK,
                 radius: 1.0,
+            },
+            outline: OutlineBundle {
+                outline: OutlineVolume {
+                    visible: false,
+                    width: 3.0,
+                    colour: Color::WHITE,
+                },
+                ..default()
             },
         }
     }

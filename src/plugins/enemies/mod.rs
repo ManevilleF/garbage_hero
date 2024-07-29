@@ -1,4 +1,4 @@
-use super::{map::MAP_SIZE, player::Player, Dead};
+use super::{map::MAP_SIZE, player::Player, spawn_some_garbage, Dead};
 use crate::ObjectLayer;
 use avian3d::prelude::*;
 use bevy::prelude::*;
@@ -126,6 +126,7 @@ pub fn spawn_enemies(worms: usize, turrets: usize, world: &mut World) {
             size: 12 + i,
             position,
         });
+        spawn_some_garbage((12 + i) * 4, Some(Vec2::new(10.0, 10.0)), Some(position))(world);
     }
     for _ in 0..turrets {
         let position = square.sample_interior(&mut rng);

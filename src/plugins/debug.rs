@@ -82,7 +82,7 @@ fn commands_ui(
                 }
             });
         if ui.button("Spawn 50 garbage items").clicked() {
-            commands.add(spawn_some_garbage(50));
+            commands.add(spawn_some_garbage(50, None, None));
         }
         ui.heading("Builds");
         ui.horizontal(|ui| {
@@ -106,11 +106,11 @@ fn commands_ui(
             });
 
         if ui.button("Spawn 10 builds").clicked() {
-            commands.add(spawn_builds(10));
+            commands.add(spawn_builds(10, None, None));
         }
 
         if ui.button("Spawn 50 builds").clicked() {
-            commands.add(spawn_builds(50));
+            commands.add(spawn_builds(50, None, None));
         }
 
         ui.heading("Enemies");

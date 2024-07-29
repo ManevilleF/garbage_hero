@@ -1,7 +1,7 @@
 use super::{
     common::Health,
     garbage::{CollectorBundle, CollectorParticlesBundle},
-    Dead,
+    Dead, Invincible,
 };
 use crate::{ObjectLayer, ParticleConfig};
 use bevy::prelude::*;
@@ -152,6 +152,9 @@ pub fn reset_players(world: &mut World) {
         entities.push(entity);
     }
     for entity in entities {
-        world.entity_mut(entity).remove::<Dead>();
+        world
+            .entity_mut(entity)
+            .remove::<Dead>()
+            .insert(Invincible(2.0));
     }
 }

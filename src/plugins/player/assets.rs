@@ -9,6 +9,7 @@ use bevy::{
     pbr::{NotShadowCaster, NotShadowReceiver},
     prelude::*,
 };
+use bevy_mod_outline::{AsyncSceneInheritOutline, OutlineBundle, OutlineVolume};
 
 pub struct PlayerVisualsPlugin;
 
@@ -32,6 +33,8 @@ impl Plugin for PlayerVisualsPlugin {
 #[derive(Bundle)]
 pub struct PlayerVisualsBundle {
     pub scene: SceneBundle,
+    pub outline: OutlineBundle,
+    pub async_outline: AsyncSceneInheritOutline,
 }
 
 impl PlayerVisualsBundle {
@@ -46,6 +49,15 @@ impl PlayerVisualsBundle {
                 },
                 ..default()
             },
+            outline: OutlineBundle {
+                outline: OutlineVolume {
+                    visible: false,
+                    width: 3.0,
+                    colour: assets.colors[id],
+                },
+                ..default()
+            },
+            async_outline: AsyncSceneInheritOutline,
         }
     }
 }

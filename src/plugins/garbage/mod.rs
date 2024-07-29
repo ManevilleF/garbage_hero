@@ -45,15 +45,21 @@ impl Plugin for GarbagePlugin {
     }
 }
 
-pub fn spawn_some_garbage(amount: usize) -> impl FnOnce(&mut World) {
+pub fn spawn_some_garbage(
+    amount: usize,
+    size: Option<Vec2>,
+    offset: Option<Vec2>,
+) -> impl FnOnce(&mut World) {
+    let size = size.unwrap_or(MAP_SIZE - Vec2::splat(2.0));
+    let offset = offset.unwrap_or(Vec2::ZERO);
     move |world| {
-        let square = Rectangle::new(MAP_SIZE.x - 2.0, MAP_SIZE.y - 2.0);
+        let square = Rectangle::new(size.x, size.y);
         let mut rng = thread_rng();
         let assets = world.resource::<GarbageAssets>();
         let bundles: Vec<_> = (0..amount)
             .map(|_| {
                 let item = GarbageItem::iter().choose(&mut rng).unwrap();
-                let pos = square.sample_interior(&mut rng);
+                let pos = offset + square.sample_interior(&mut rng);
                 let position = Vec3::new(pos.x, 1.0, pos.y);
                 let mut bundle = GarbageBundle::new(item, assets);
                 bundle.pbr.transform.translation = position;
@@ -64,15 +70,21 @@ pub fn spawn_some_garbage(amount: usize) -> impl FnOnce(&mut World) {
     }
 }
 
-pub fn spawn_builds(amount: usize) -> impl FnOnce(&mut World) {
+pub fn spawn_builds(
+    amount: usize,
+    size: Option<Vec2>,
+    offset: Option<Vec2>,
+) -> impl FnOnce(&mut World) {
+    let size = size.unwrap_or(MAP_SIZE - Vec2::splat(20.0));
+    let offset = offset.unwrap_or(Vec2::ZERO);
     move |world| {
-        let square = Rectangle::new(MAP_SIZE.x - 20.0, MAP_SIZE.y - 20.0);
+        let square = Rectangle::new(size.x, size.y);
         let mut rng = thread_rng();
         let builds = world.resource::<AvailableItemBuilds>();
         let commands: Vec<_> = (0..amount)
             .map(|_| {
                 let handle = builds.values().choose(&mut rng).unwrap().clone_weak();
-                let pos = square.sample_interior(&mut rng);
+                let pos = offset + square.sample_interior(&mut rng);
                 let position = Vec3::new(pos.x, 1.0, pos.y);
                 let angle = rng.gen_range(0.0..PI);
                 SpawnBuild {

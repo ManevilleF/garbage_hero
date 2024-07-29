@@ -147,8 +147,6 @@ impl Command for StartGame {
         // enemies
         spawn_enemies(self.worm_count, self.turret_count, world);
         // items
-        let amount = (self.turret_count + self.worm_count) * 12;
-        spawn_builds(amount)(world);
-        spawn_some_garbage(amount)(world);
+        spawn_builds(100, None, None)(world);
     }
 }
