@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 pub struct SplashScreenPlugin;
 
-const SPLASH_DURATION: f32 = 2.0;
+const SPLASH_DURATION: f32 = 3.0;
 
 impl Plugin for SplashScreenPlugin {
     fn build(&self, app: &mut App) {
