@@ -158,7 +158,7 @@ impl ParticleConfig {
             .with_simulation_space(SimulationSpace::Local)
     }
 
-    fn destruction_effect(texture: Handle<Image>) -> EffectAsset {
+    fn destruction_effect() -> EffectAsset {
         // Set `spawn_immediately` to false to spawn on command with Spawner::reset()
         let spawner = Spawner::once(100.0.into(), false);
         let mut size_gradient = Gradient::new();
@@ -196,12 +196,17 @@ impl ParticleConfig {
             screen_space_size: false,
         };
         let update_accel = AccelModifier::new(writer.lit(Vec3::new(0.0, -9.8, 0.0)).expr());
+
+        let texture_slot = writer.lit(0).expr();
         let render_texture = ParticleTextureModifier {
-            texture,
+            texture_slot,
             sample_mapping: ImageSampleMapping::ModulateOpacityFromR,
         };
 
-        EffectAsset::new(vec![32768], spawner, writer.finish())
+        let mut module = writer.finish();
+        module.add_texture("texture");
+
+        EffectAsset::new(vec![32768], spawner, module)
             .with_name("Object Destruction")
             .init(init_color)
             .init(init_pos)
@@ -225,9 +230,15 @@ impl FromWorld for ParticleConfig {
         let mut assets = world.resource_mut::<Assets<EffectAsset>>();
 
         let collector_effect = assets.add(Self::collector_effect());
-        let destruction_handle = assets.add(Self::destruction_effect(texture));
+        let destruction_handle = assets.add(Self::destruction_effect());
         let destruction_emitter = world
-            .spawn(ParticleEffectBundle::new(destruction_handle))
+            .spawn((
+                ParticleEffectBundle::new(destruction_handle),
+                EffectMaterial {
+                    images: vec![texture],
+                },
+                Name::new("Destruction Emitter"),
+            ))
             .id();
 
         Self {

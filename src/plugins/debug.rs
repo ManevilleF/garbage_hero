@@ -1,4 +1,4 @@
-use bevy::{dev_tools::ui_debug_overlay::UiDebugOptions, prelude::*, utils::HashMap};
+use bevy::{dev_tools::ui_debug_overlay::UiDebugOptions, prelude::*};
 use bevy_egui::{
     egui::{self, Widget},
     EguiContexts,
@@ -14,7 +14,6 @@ use super::{
         GarbageItem, SpawnBuild,
     },
     player::{ActiveSkill, GameController, GamepadCategory, Player, PlayerConnected, SkillState},
-    ui::input_icons::InputMapIcons,
 };
 
 pub struct DebugPlugin;
