@@ -36,7 +36,8 @@ default-features = false
 
 # particles
 [dependencies.bevy_hanabi]
-version = "0.12"
+# version = "0.13"
+git = "ssh://git@github.com/djeedai/bevy_hanabi.git"
 default-features = false
 features = ["3d"]
 
@@ -71,7 +72,7 @@ features = [
     "tonemapping_luts",
     "smaa_luts",
     "default_font",
-    # "webgl2",
+    "webgpu",
     "sysinfo_plugin",
 ]
 

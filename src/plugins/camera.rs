@@ -3,9 +3,8 @@ use std::ops::DerefMut;
 use super::{map::MAP_SIZE, player::Player, Dead};
 use avian3d::prelude::PhysicsSet;
 use bevy::{
-    core_pipeline::tonemapping::Tonemapping, ecs::system::SystemParam,
-    pbr::ScreenSpaceAmbientOcclusionBundle, prelude::*, render::camera::ScalingMode,
-    window::PrimaryWindow,
+    core_pipeline::tonemapping::Tonemapping, ecs::system::SystemParam, pbr, prelude::*,
+    render::camera::ScalingMode, window::PrimaryWindow,
 };
 
 const CAM_SCALE_COEF: f32 = 0.001;
@@ -62,7 +61,12 @@ pub fn spawn_camera(mut commands: Commands) {
             tonemapping: Tonemapping::TonyMcMapface,
             ..default()
         },
-        ScreenSpaceAmbientOcclusionBundle::default(),
+        pbr::ScreenSpaceAmbientOcclusionBundle {
+            settings: pbr::ScreenSpaceAmbientOcclusionSettings {
+                quality_level: pbr::ScreenSpaceAmbientOcclusionQualityLevel::Medium,
+            },
+            ..default()
+        },
         Name::new("Game Camera"),
         GameCamera,
         IsDefaultUiCamera,

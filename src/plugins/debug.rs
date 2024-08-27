@@ -26,8 +26,7 @@ impl Plugin for DebugPlugin {
             bevy_inspector_egui::DefaultInspectorConfigPlugin,
             bevy::dev_tools::ui_debug_overlay::DebugUiPlugin,
         ))
-        .init_resource::<ImageToEgui>()
-        .add_systems(Update, (update_images, commands_ui, players_ui, debug_ui));
+        .add_systems(Update, (commands_ui, players_ui, debug_ui));
     }
 }
 
@@ -130,41 +129,16 @@ fn commands_ui(
     });
 }
 
-#[derive(Resource, Default)]
-struct ImageToEgui(HashMap<Handle<Image>, egui::TextureId>);
-
-fn update_images(
-    new_icons: Query<&InputMapIcons, Added<InputMapIcons>>,
-    mut images: ResMut<ImageToEgui>,
-    mut context: EguiContexts,
-) {
-    for icons in &new_icons {
-        let texture = context.add_image(icons.controller_icon.clone_weak());
-        images.0.insert(icons.controller_icon.clone_weak(), texture);
-        for handle in icons.input_icons.values() {
-            let texture = context.add_image(handle.clone_weak());
-            images.0.insert(handle.clone_weak(), texture);
-        }
-    }
-}
-
 fn players_ui(
     mut player_connected_evw: EventWriter<PlayerConnected>,
     mut context: EguiContexts,
-    textures: Res<ImageToEgui>,
-    mut players: Query<(
-        &Player,
-        &ActiveSkill,
-        &SkillState,
-        &mut Health,
-        &InputMapIcons,
-    )>,
+    mut players: Query<(&Player, &ActiveSkill, &SkillState, &mut Health)>,
 ) {
     let ctx = context.ctx_mut();
     let mut player_count = 0_usize;
     egui::Window::new("Players").show(ctx, |ui| {
         egui::ScrollArea::vertical().show(ui, |ui| {
-            for (player, skill, state, mut health, icons) in &mut players {
+            for (player, skill, state, mut health) in &mut players {
                 egui::Grid::new(format!("Player {} Grid", player.id)).show(ui, |ui| {
                     ui.label(format!("{}", player.id));
                     ui.label(format!("{}", player.controller));
@@ -185,31 +159,6 @@ fn players_ui(
                             for (skill, cooldown) in &state.cooldowns {
                                 ui.label(format!("{}", skill));
                                 ui.label(format!("{}", *cooldown));
-                                ui.end_row();
-                            }
-                        });
-                    });
-                egui::CollapsingHeader::new("Icons")
-                    .id_source(format!("Icons {}", player.id))
-                    .show(ui, |ui| {
-                        egui::Grid::new("icons").show(ui, |ui| {
-                            ui.label("Controller");
-
-                            if let Some(texture) = textures.0.get(&icons.controller_icon) {
-                                ui.add(egui::widgets::Image::new(egui::load::SizedTexture::new(
-                                    *texture,
-                                    [48.0, 48.0],
-                                )));
-                            }
-
-                            ui.end_row();
-                            for (input, icon) in icons.input_icons.iter() {
-                                ui.label(format!("{input:?}"));
-                                if let Some(texture) = textures.0.get(icon) {
-                                    ui.add(egui::widgets::Image::new(
-                                        egui::load::SizedTexture::new(*texture, [48.0, 48.0]),
-                                    ));
-                                }
                                 ui.end_row();
                             }
                         });
