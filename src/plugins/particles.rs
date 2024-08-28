@@ -197,7 +197,7 @@ impl ParticleConfig {
         };
         let update_accel = AccelModifier::new(writer.lit(Vec3::new(0.0, -9.8, 0.0)).expr());
 
-        let texture_slot = writer.lit(0).expr();
+        let texture_slot = writer.lit(0u32).expr();
         let render_texture = ParticleTextureModifier {
             texture_slot,
             sample_mapping: ImageSampleMapping::ModulateOpacityFromR,
