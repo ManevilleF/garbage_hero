@@ -9,6 +9,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0 # CI builds from scratch
+  CARGO_NET_GIT_FETCH_WITH_CLI: true
 
 # This allows github actions ton cancel previous workflowson the same ref
 concurrency:

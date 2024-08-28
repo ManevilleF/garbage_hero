@@ -45,6 +45,8 @@ pub fn run() -> AppExit {
         primary_window: Some(Window {
             resolution: (1920.0, 1080.0).into(),
             name: Some(APP_NAME.to_string()),
+            canvas: Some("#game-canvas".to_owned()),
+            fit_canvas_to_parent: true,
             ..default()
         }),
         ..default()
