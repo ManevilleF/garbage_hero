@@ -1,6 +1,6 @@
 use avian3d::prelude::*;
 use bevy::prelude::*;
-use bevy_mod_outline::{OutlineBundle, OutlineVolume};
+use bevy_mod_outline::OutlineVolume;
 
 use crate::{
     plugins::{
@@ -37,7 +37,9 @@ impl Plugin for WormPlugin {
 
 #[derive(Bundle)]
 pub struct WormBundle {
-    pub pbr: PbrBundle,
+    pub mesh: Mesh3d,
+    pub material: MeshMaterial3d<StandardMaterial>,
+    pub transform: Transform,
     pub enemy: Enemy,
     pub movement: WormMovement,
     pub state: WormState,
@@ -49,18 +51,15 @@ pub struct WormBundle {
     pub damage: Damage,
     pub name: Name,
     pub death: DeathEffect,
-    pub outline: OutlineBundle,
+    pub outline: OutlineVolume,
 }
 
 impl WormBundle {
-    pub fn new(pos: Vec3, assets: &EnemyAssets, size: usize) -> Self {
+    pub fn new(pos: Vec3, assets: &EnemyAssets, size: usize) -> impl Bundle {
         Self {
-            pbr: PbrBundle {
-                material: assets.materials[0].clone_weak(),
-                mesh: assets.mesh.clone_weak(),
-                transform: Transform::from_translation(pos),
-                ..default()
-            },
+            material: MeshMaterial3d(assets.materials[0].clone_weak()),
+            mesh: Mesh3d(assets.mesh.clone_weak()),
+            transform: Transform::from_translation(pos),
             enemy: Enemy,
             movement: WormMovement::new((size as f32 * 1.5).max(10.0), pos),
             rigidbody: RigidBody::Kinematic,
@@ -75,13 +74,10 @@ impl WormBundle {
                 color: Color::BLACK,
                 radius: 1.0,
             },
-            outline: OutlineBundle {
-                outline: OutlineVolume {
-                    visible: false,
-                    width: 3.0,
-                    colour: Color::WHITE,
-                },
-                ..default()
+            outline: OutlineVolume {
+                visible: false,
+                width: 3.0,
+                colour: Color::WHITE,
             },
         }
     }
@@ -122,7 +118,7 @@ fn behave(
     mut enemies: Query<(&mut Transform, &mut WormMovement, &mut WormState)>,
     time: Res<Time>,
 ) {
-    let dt = time.delta_seconds();
+    let dt = time.delta_secs();
     for (mut transform, mut movement, mut state) in &mut enemies {
         let position = transform.translation;
         let speed = movement.speed;

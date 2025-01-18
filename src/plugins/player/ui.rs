@@ -55,37 +55,31 @@ struct PlayerInputUI(HashMap<PlayerInput, Entity>);
 fn setup_ui(mut commands: Commands) {
     let controls_root_node = commands
         .spawn((
-            NodeBundle {
-                style: Style {
-                    flex_direction: FlexDirection::Row,
-                    position_type: PositionType::Absolute,
-                    bottom: Val::Px(125.0),
-                    left: Val::Px(0.0),
-                    right: Val::Px(0.0),
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::FlexEnd,
-                    ..default()
-                },
-                visibility: Visibility::Hidden,
+            Node {
+                flex_direction: FlexDirection::Row,
+                position_type: PositionType::Absolute,
+                bottom: Val::Px(125.0),
+                left: Val::Px(0.0),
+                right: Val::Px(0.0),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::FlexEnd,
                 ..default()
             },
+            Visibility::Hidden,
             Name::new("Player Controls Root"),
         ))
         .id();
     let bottom_root_node = commands
         .spawn((
-            NodeBundle {
-                style: Style {
-                    flex_direction: FlexDirection::Row,
-                    position_type: PositionType::Absolute,
-                    bottom: Val::Px(0.0),
-                    left: Val::Px(0.0),
-                    right: Val::Px(0.0),
-                    height: Val::Px(100.0),
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::Stretch,
-                    ..default()
-                },
+            Node {
+                flex_direction: FlexDirection::Row,
+                position_type: PositionType::Absolute,
+                bottom: Val::Px(0.0),
+                left: Val::Px(0.0),
+                right: Val::Px(0.0),
+                height: Val::Px(100.0),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Stretch,
                 ..default()
             },
             Name::new("Player UI Root"),
@@ -99,7 +93,7 @@ fn setup_ui(mut commands: Commands) {
 
 fn update_input_icons(
     players: Query<(&PlayerInputUI, &InputMapIcons), Changed<InputMapIcons>>,
-    mut ui: Query<&mut UiImage>,
+    mut ui: Query<&mut ImageNode>,
 ) {
     for (ui_entities, icons) in &players {
         for (input, image_entity) in &ui_entities.0 {
@@ -109,7 +103,7 @@ fn update_input_icons(
             let Some(handle) = icons.input_icons.get(input) else {
                 continue;
             };
-            let mut texture = image.map_unchanged(|i| &mut i.texture);
+            let mut texture = image.map_unchanged(|i| &mut i.image);
             texture.set_if_neq(handle.clone_weak());
         }
     }
@@ -117,7 +111,7 @@ fn update_input_icons(
 
 fn update_health(
     health: Query<(&Health, &HealthUi), Changed<Health>>,
-    mut ui: Query<&mut Style, With<UiImage>>,
+    mut ui: Query<&mut Node, With<ImageNode>>,
 ) {
     for (health, HealthUi(ui_entity)) in &health {
         let Ok(mut style) = ui.get_mut(*ui_entity) else {
@@ -139,15 +133,12 @@ fn create_player_ui(
         // BOTTOM
         let root = commands
             .spawn((
-                NodeBundle {
-                    style: Style {
-                        flex_direction: FlexDirection::Row,
-                        align_items: AlignItems::FlexEnd,
-                        height: Val::Percent(80.0),
-                        width: Val::Px(100.0),
-                        margin: UiRect::horizontal(Val::Px(25.0)),
-                        ..default()
-                    },
+                Node {
+                    flex_direction: FlexDirection::Row,
+                    align_items: AlignItems::FlexEnd,
+                    height: Val::Percent(80.0),
+                    width: Val::Px(100.0),
+                    margin: UiRect::horizontal(Val::Px(25.0)),
                     ..default()
                 },
                 Name::new(format!("Player {} Bar Root node", player.id)),
@@ -156,65 +147,51 @@ fn create_player_ui(
             .id();
         commands
             .spawn((
-                TextBundle {
-                    style: Style {
-                        position_type: PositionType::Absolute,
-                        width: Val::Percent(45.0),
-                        bottom: Val::Px(30.0),
-                        left: Val::Px(0.0),
+                Node {
+                    position_type: PositionType::Absolute,
+                    width: Val::Percent(45.0),
+                    bottom: Val::Px(30.0),
+                    left: Val::Px(0.0),
 
-                        ..default()
-                    },
-                    text: Text {
-                        sections: vec![TextSection {
-                            value: format!("P{}", player.id),
-                            style: TextStyle {
-                                font_size: 20.0,
-                                color,
-                                ..default()
-                            },
-                        }],
-                        justify: JustifyText::Left,
-                        ..default()
-                    },
                     ..default()
                 },
+                Text::new(format!("P{}", player.id)),
+                TextLayout::new_with_justify(JustifyText::Left),
+                TextFont {
+                    font_size: 20.0,
+                    ..default()
+                },
+                TextColor(color),
                 Name::new("Player text"),
             ))
             .set_parent(root);
         let health_root = commands
             .spawn((
-                NodeBundle {
-                    style: Style {
-                        position_type: PositionType::Absolute,
-                        width: Val::Percent(100.0),
-                        height: Val::Px(20.0),
-                        border: UiRect::all(Val::Px(5.0)),
-                        bottom: Val::Px(10.0),
-                        left: Val::Px(0.0),
-                        ..default()
-                    },
-                    border_color: BorderColor(color),
-                    border_radius: BorderRadius::all(Val::Px(5.0)),
-                    z_index: ZIndex::Local(10),
+                Node {
+                    position_type: PositionType::Absolute,
+                    width: Val::Percent(100.0),
+                    height: Val::Px(20.0),
+                    border: UiRect::all(Val::Px(5.0)),
+                    bottom: Val::Px(10.0),
+                    left: Val::Px(0.0),
                     ..default()
                 },
+                BorderColor(color),
+                BorderRadius::all(Val::Px(5.0)),
+                ZIndex(10),
                 Name::new("Health Root"),
             ))
             .set_parent(root)
             .id();
         let health_ui = commands
             .spawn((
-                ImageBundle {
-                    style: Style {
-                        width: Val::Percent(100.0),
-                        height: Val::Percent(100.0),
-                        ..default()
-                    },
-                    image: UiImage { color, ..default() },
-                    background_color: BackgroundColor(Color::WHITE),
+                Node {
+                    width: Val::Percent(100.0),
+                    height: Val::Percent(100.0),
                     ..default()
                 },
+                ImageNode { color, ..default() },
+                BackgroundColor(Color::WHITE),
                 Name::new("Health"),
             ))
             .set_parent(health_root)
@@ -222,22 +199,19 @@ fn create_player_ui(
         commands.entity(entity).insert(HealthUi(health_ui));
         commands
             .spawn((
-                ImageBundle {
-                    style: Style {
-                        position_type: PositionType::Absolute,
-                        height: Val::Px(80.0),
-                        width: Val::Px(80.0),
-                        left: Val::Percent(45.0),
-                        ..default()
-                    },
-                    image: UiImage {
-                        color,
-                        texture: icons.controller_icon.clone_weak(),
-                        ..default()
-                    },
-                    transform: Transform::from_rotation(Quat::from_rotation_z(FRAC_PI_6)),
+                Node {
+                    position_type: PositionType::Absolute,
+                    height: Val::Px(80.0),
+                    width: Val::Px(80.0),
+                    left: Val::Percent(45.0),
                     ..default()
                 },
+                ImageNode {
+                    color,
+                    image: icons.controller_icon.clone_weak(),
+                    ..default()
+                },
+                Transform::from_rotation(Quat::from_rotation_z(FRAC_PI_6)),
                 Name::new("Controller Icon"),
             ))
             .set_parent(root);
@@ -245,22 +219,19 @@ fn create_player_ui(
         // CONTROLS
         let root = commands
             .spawn((
-                NodeBundle {
-                    style: Style {
-                        flex_direction: FlexDirection::Column,
-                        align_items: AlignItems::Center,
-                        width: Val::Px(120.0),
-                        bottom: Val::Px(0.0),
-                        margin: UiRect::horizontal(Val::Px(15.0)),
-                        padding: UiRect::all(Val::Px(5.0)),
-                        border: UiRect::all(Val::Px(5.0)),
-                        ..default()
-                    },
-                    background_color: BackgroundColor(Color::BLACK.with_alpha(0.8)),
-                    border_color: BorderColor(color),
-                    border_radius: BorderRadius::all(Val::Px(5.0)),
+                Node {
+                    flex_direction: FlexDirection::Column,
+                    align_items: AlignItems::Center,
+                    width: Val::Px(120.0),
+                    bottom: Val::Px(0.0),
+                    margin: UiRect::horizontal(Val::Px(15.0)),
+                    padding: UiRect::all(Val::Px(5.0)),
+                    border: UiRect::all(Val::Px(5.0)),
                     ..default()
                 },
+                BackgroundColor(Color::BLACK.with_alpha(0.8)),
+                BorderColor(color),
+                BorderRadius::all(Val::Px(5.0)),
                 Name::new(format!("Player {} Controls Root node", player.id)),
             ))
             .set_parent(state.controls_root_node)
@@ -269,15 +240,12 @@ fn create_player_ui(
         for (input, icon) in &icons.input_icons {
             let input_root = commands
                 .spawn((
-                    NodeBundle {
-                        style: Style {
-                            flex_direction: FlexDirection::Row,
-                            align_items: AlignItems::Center,
-                            height: Val::Px(50.0),
-                            width: Val::Percent(100.0),
-                            margin: UiRect::all(Val::Px(5.0)),
-                            ..default()
-                        },
+                    Node {
+                        flex_direction: FlexDirection::Row,
+                        align_items: AlignItems::Center,
+                        height: Val::Px(50.0),
+                        width: Val::Percent(100.0),
+                        margin: UiRect::all(Val::Px(5.0)),
                         ..default()
                     },
                     Name::new(format!("{input}")),
@@ -286,41 +254,30 @@ fn create_player_ui(
                 .id();
             commands
                 .spawn((
-                    TextBundle {
-                        style: Style {
-                            width: Val::Px(80.0),
-                            ..default()
-                        },
-                        text: Text {
-                            sections: vec![TextSection {
-                                value: format!("{}", input),
-                                style: TextStyle {
-                                    font_size: 15.0,
-                                    color: Color::WHITE,
-                                    ..default()
-                                },
-                            }],
-                            justify: JustifyText::Left,
-                            ..default()
-                        },
+                    Node {
+                        width: Val::Px(80.0),
                         ..default()
                     },
+                    Text::new(format!("{}", input)),
+                    TextFont {
+                        font_size: 15.0,
+                        ..default()
+                    },
+                    TextColor(Color::WHITE),
+                    TextLayout::new_with_justify(JustifyText::Left),
                     Name::new("Text"),
                 ))
                 .set_parent(input_root);
             let image = commands
                 .spawn((
-                    ImageBundle {
-                        style: Style {
-                            height: Val::Px(40.0),
-                            width: Val::Px(40.0),
-                            right: Val::Px(0.0),
-                            ..default()
-                        },
-                        image: UiImage {
-                            texture: icon.clone_weak(),
-                            ..default()
-                        },
+                    Node {
+                        height: Val::Px(40.0),
+                        width: Val::Px(40.0),
+                        right: Val::Px(0.0),
+                        ..default()
+                    },
+                    ImageNode {
+                        image: icon.clone_weak(),
                         ..default()
                     },
                     Name::new("Icon"),

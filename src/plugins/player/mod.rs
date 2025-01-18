@@ -63,7 +63,8 @@ pub struct PlayerBundle {
     pub input: PlayerInputBundle,
     pub movement: PlayerMovementBundle,
     pub skills: PlayerSkillsBundle,
-    pub spatial: SpatialBundle,
+    pub transform: Transform,
+    pub visibility: Visibility,
 }
 
 impl PlayerBundle {
@@ -77,7 +78,8 @@ impl PlayerBundle {
             input: PlayerInputBundle::new(player.controller, server),
             movement: PlayerMovementBundle::new(100.0, 0.9),
             skills: PlayerSkillsBundle::new(),
-            spatial: Default::default(),
+            transform: Default::default(),
+            visibility: Default::default(),
             player,
         }
     }
@@ -101,11 +103,12 @@ pub fn spawn_players(
         let color = assets.colors[player.id as usize];
         // Offset
         let mut bundle = PlayerBundle::new(*player, &asset_server);
-        bundle.spatial.transform.translation = position;
+        bundle.transform.translation = position;
 
         let root_entity = commands
             .spawn((
-                SpatialBundle::default(),
+                Transform::default(),
+                Visibility::default(),
                 Name::new(format!("{} Root", bundle.name)),
             ))
             .id();

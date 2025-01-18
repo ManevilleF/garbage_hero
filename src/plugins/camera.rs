@@ -44,27 +44,23 @@ impl<'w, 's> CameraParams<'w, 's> {
             .get_single()
             .ok()
             .and_then(|w| w.cursor_position())
-            .and_then(|p| camera.viewport_to_world(cam_gtr, p))
+            .and_then(|p| camera.viewport_to_world(cam_gtr, p).ok())
     }
 }
 
 pub fn spawn_camera(mut commands: Commands) {
     commands.spawn((
-        Camera3dBundle {
-            transform: Transform::from_translation(CAM_OFFSET).looking_at(Vec3::ZERO, Dir3::Y),
-            projection: Projection::Orthographic(OrthographicProjection {
-                scaling_mode: ScalingMode::WindowSize(1.0),
-                scale: CAM_MIN_SCALE,
-                near: -100.0,
-                ..default()
-            }),
-            tonemapping: Tonemapping::TonyMcMapface,
-            ..default()
-        },
-        pbr::ScreenSpaceAmbientOcclusionBundle {
-            settings: pbr::ScreenSpaceAmbientOcclusionSettings {
-                quality_level: pbr::ScreenSpaceAmbientOcclusionQualityLevel::Medium,
-            },
+        Camera3d::default(),
+        Transform::from_translation(CAM_OFFSET).looking_at(Vec3::ZERO, Dir3::Y),
+        Projection::Orthographic(OrthographicProjection {
+            scaling_mode: ScalingMode::WindowSize,
+            scale: CAM_MIN_SCALE,
+            near: -100.0,
+            ..OrthographicProjection::default_3d()
+        }),
+        Tonemapping::TonyMcMapface,
+        pbr::ScreenSpaceAmbientOcclusion {
+            quality_level: pbr::ScreenSpaceAmbientOcclusionQualityLevel::Medium,
             ..default()
         },
         Name::new("Game Camera"),
@@ -91,7 +87,7 @@ pub fn follow_players(
         min = min.min(pos);
         max = max.max(pos);
     }
-    let dt = time.delta_seconds();
+    let dt = time.delta_secs();
     // Translation
     let center = (max + min) / 2.0;
     let target = Vec3::new(center.x, 0.0, center.y) + CAM_OFFSET;

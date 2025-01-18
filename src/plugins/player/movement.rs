@@ -76,7 +76,7 @@ pub fn apply_movement(
     >,
     time: Res<Time>,
 ) {
-    let dt = time.delta_seconds();
+    let dt = time.delta_secs();
     for (mut velocity, action_state, speed) in &mut controllers {
         if let Some(dir) = PlayerInput::get_movement(action_state) {
             velocity.x += dir.x * dt * speed.0;
@@ -91,7 +91,7 @@ fn apply_gravity(
     gravity: Res<Gravity>,
     mut controllers: Query<&mut LinearVelocity, With<MovementSpeed>>,
 ) {
-    let delta_time = time.delta_seconds();
+    let delta_time = time.delta_secs();
     for mut velocity in &mut controllers {
         velocity.0 += gravity.0 * delta_time;
     }

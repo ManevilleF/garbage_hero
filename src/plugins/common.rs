@@ -131,7 +131,7 @@ fn tick_invincibility(
     time: Res<Time>,
     mut invincibility: Query<(Entity, &mut Invincible)>,
 ) {
-    let dt = time.delta_seconds();
+    let dt = time.delta_secs();
     for (entity, mut invincible) in &mut invincibility {
         if !invincible.tick(dt) {
             commands.entity(entity).remove::<Invincible>();

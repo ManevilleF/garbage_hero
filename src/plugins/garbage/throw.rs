@@ -4,7 +4,7 @@ use bevy::{
     log,
     prelude::*,
 };
-use bevy_mod_outline::{OutlineBundle, OutlineVolume};
+use bevy_mod_outline::OutlineVolume;
 
 use crate::Damage;
 
@@ -44,13 +44,10 @@ impl Component for ThrownItem {
                 let color = config.color;
                 let mut commands = world.commands();
                 commands.entity(entity).insert((
-                    OutlineBundle {
-                        outline: OutlineVolume {
-                            visible: true,
-                            width: 3.0,
-                            colour: color,
-                        },
-                        ..default()
+                    OutlineVolume {
+                        visible: true,
+                        width: 3.0,
+                        colour: color,
                     },
                     Damage(THROW_DAMAGE),
                 ));
@@ -59,7 +56,7 @@ impl Component for ThrownItem {
                 let mut commands = world.commands();
                 commands
                     .entity(entity)
-                    .remove::<OutlineBundle>()
+                    .remove::<OutlineVolume>()
                     .remove::<Damage>();
             });
     }
@@ -81,7 +78,7 @@ fn update_thrown_items(
 ) {
     const TRESHOLD: f32 = 12.0;
 
-    let dt = time.delta_seconds();
+    let dt = time.delta_secs();
     for (entity, mut thrown, linvel) in &mut items {
         thrown.timer += dt;
         if thrown.timer >= THROW_MIN_TIMER && linvel.0.length_squared() <= TRESHOLD {

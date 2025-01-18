@@ -52,7 +52,8 @@ pub struct TargetPlayer(Vec3);
 
 #[derive(Bundle)]
 pub struct PlayerDetectorBundle {
-    pub spatial: SpatialBundle,
+    pub transform: Transform,
+    pub visibility: Visibility,
     pub sensor: Sensor,
     pub collider: Collider,
     pub layers: CollisionLayers,
@@ -62,7 +63,8 @@ pub struct PlayerDetectorBundle {
 impl PlayerDetectorBundle {
     pub fn sphere(radius: f32, cooldown: f32) -> Self {
         Self {
-            spatial: SpatialBundle::default(),
+            transform: Transform::default(),
+            visibility: Visibility::default(),
             sensor: Sensor,
             collider: Collider::sphere(radius),
             layers: CollisionLayers::new(ObjectLayer::Enemy, ObjectLayer::Player),
@@ -72,11 +74,9 @@ impl PlayerDetectorBundle {
 
     pub fn cone(cooldown: f32) -> Self {
         Self {
-            spatial: SpatialBundle {
-                transform: Transform::from_xyz(0.0, 0.0, 5.0)
-                    .with_rotation(Quat::from_rotation_y(PI) * Quat::from_rotation_x(FRAC_PI_2)),
-                ..default()
-            },
+            transform: Transform::from_xyz(0.0, 0.0, 5.0)
+                .with_rotation(Quat::from_rotation_y(PI) * Quat::from_rotation_x(FRAC_PI_2)),
+            visibility: Visibility::default(),
             sensor: Sensor,
             collider: Collider::cone(15.0, 15.0),
             layers: CollisionLayers::new(ObjectLayer::Enemy, ObjectLayer::Player),
@@ -91,7 +91,7 @@ fn detect_players(
     mut detectors: Query<(&Parent, &mut PlayerDetector, &CollidingEntities)>,
     players: Query<&GlobalTransform, (With<Player>, Without<Dead>)>,
 ) {
-    let dt = time.delta_seconds();
+    let dt = time.delta_secs();
     for (parent, mut detector, collisions) in &mut detectors {
         detector.last_detection += dt;
         if detector.last_detection < detector.attack_cooldown {

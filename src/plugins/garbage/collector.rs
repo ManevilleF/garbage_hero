@@ -8,7 +8,7 @@ use bevy::{
     log,
     prelude::*,
 };
-use bevy_hanabi::{EffectProperties, EffectSpawner, ParticleEffect, ParticleEffectBundle};
+use bevy_hanabi::*;
 
 pub struct CollectorPlugin;
 
@@ -77,7 +77,8 @@ impl Component for Collector {
 
 #[derive(Bundle)]
 pub struct CollectorBundle {
-    pub spatial: SpatialBundle,
+    pub transform: Transform,
+    pub visibility: Visibility,
     pub collector: Collector,
     pub config: CollectorConfig,
     pub collider: Collider,
@@ -97,7 +98,8 @@ impl CollectorBundle {
         on_collected_filter: ObjectLayer,
     ) -> Self {
         Self {
-            spatial: SpatialBundle::default(),
+            transform: Transform::default(),
+            visibility: Visibility::default(),
             collider: Collider::sphere(1.0),
             sensor: Sensor,
             collector: Collector::fixed(collector_radius, max_distance, max_items, max_points),
@@ -121,7 +123,8 @@ impl CollectorBundle {
         on_collected_filter: ObjectLayer,
     ) -> Self {
         Self {
-            spatial: SpatialBundle::default(),
+            transform: Transform::default(),
+            visibility: Visibility::default(),
             collider: Collider::sphere(1.0),
             sensor: Sensor,
             collector: Collector::growing(min_radius, max_distance, max_items),
@@ -294,7 +297,7 @@ impl Collector {
         Some(move |world: &mut World| {
             let mass = world
                 .get::<ColliderMassProperties>(entity)
-                .map(|p| p.mass.0)
+                .map(|p| p.mass)
                 .unwrap_or(1.0);
             if let Some(collected) = world.get::<Collected>(entity) {
                 let collector_entity = collected.collector_entity;
@@ -320,7 +323,7 @@ fn update_particles(
     mut particles: Query<(
         Entity,
         &mut Transform,
-        &mut EffectSpawner,
+        &mut EffectInitializers,
         &mut EffectProperties,
         &CollectorParticles,
     )>,
@@ -374,7 +377,7 @@ fn update_collected_position(
 }
 
 fn auto_rotate(time: Res<Time>, mut collectors: Query<(&GlobalTransform, &mut Collector)>) {
-    let dt = time.delta_seconds();
+    let dt = time.delta_secs();
     for (gtr, mut collector) in &mut collectors {
         match collector.shape {
             DistributionShape::Circle => {

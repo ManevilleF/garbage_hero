@@ -44,12 +44,15 @@ impl FromWorld for EnemyAssets {
 }
 
 fn update_materials(
-    mut materials: Query<(&mut Handle<StandardMaterial>, &Health), (With<Enemy>, Changed<Health>)>,
+    mut materials: Query<
+        (&mut MeshMaterial3d<StandardMaterial>, &Health),
+        (With<Enemy>, Changed<Health>),
+    >,
     assets: Res<EnemyAssets>,
 ) {
     for (mut mat, health) in &mut materials {
         let ratio = health.ratio();
         let index = (ratio * (assets.materials.len().saturating_sub(1) as f32)).round() as usize;
-        *mat = assets.materials[index].clone_weak();
+        mat.0 = assets.materials[index].clone_weak();
     }
 }

@@ -62,7 +62,7 @@ pub fn spawn_some_garbage(
                 let pos = offset + square.sample_interior(&mut rng);
                 let position = Vec3::new(pos.x, 1.0, pos.y);
                 let mut bundle = GarbageBundle::new(item, assets);
-                bundle.pbr.transform.translation = position;
+                bundle.transform.translation = position;
                 bundle
             })
             .collect();

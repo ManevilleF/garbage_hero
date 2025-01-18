@@ -81,7 +81,9 @@ impl GarbageItem {
 #[derive(Bundle)]
 pub struct GarbageBundle {
     pub collectible: GarbageItem,
-    pub pbr: PbrBundle,
+    pub mesh: Mesh3d,
+    pub material: MeshMaterial3d<StandardMaterial>,
+    pub transform: Transform,
     pub rigidbody: RigidBody,
     pub collider: Collider,
     pub margin: CollisionMargin,
@@ -98,11 +100,9 @@ impl GarbageBundle {
     pub fn new(collectible: GarbageItem, assets: &GarbageAssets) -> Self {
         Self {
             collectible,
-            pbr: PbrBundle {
-                mesh: assets.meshes[collectible as usize].clone_weak(),
-                material: assets.materials[collectible as usize].clone_weak(),
-                ..default()
-            },
+            mesh: Mesh3d(assets.meshes[collectible as usize].clone_weak()),
+            material: MeshMaterial3d(assets.materials[collectible as usize].clone_weak()),
+            transform: Transform::default(),
             rigidbody: RigidBody::Dynamic,
             collider: assets.colliders[collectible as usize].clone(),
             margin: CollisionMargin(0.02),

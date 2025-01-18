@@ -1,5 +1,7 @@
+use std::any::Any;
+
 use bevy::{prelude::*, utils::HashMap};
-use leafwing_input_manager::prelude::*;
+use leafwing_input_manager::{axislike::DualAxisDirection, prelude::*};
 
 use crate::plugins::player::{GameController, GamepadCategory, PlayerInput};
 
@@ -37,6 +39,7 @@ impl InputMapIcons {
             GameController::Gamepad { category, .. } => (*category, category.controller_icon()),
         };
         let controller_icon = server.load(icon_path);
+        let mut input_icons = HashMap::with_capacity(map.len());
         let input_icons = map
             .iter()
             .map(|(action, input)| {
@@ -79,7 +82,7 @@ pub fn single_input_icon(input: InputKind, category: GamepadCategory) -> Option<
         InputKind::Modifier(_) => None,
         InputKind::Mouse(b) => mouse_button_icon(b),
         InputKind::MouseWheel(w) => mouse_wheel_icon(w),
-        InputKind::MouseMotion(_) => None,
+        InputKind::MouseMotion(_) => Some(mouse_move_icon()),
         _ => None,
     }
 }
@@ -87,8 +90,6 @@ pub fn single_input_icon(input: InputKind, category: GamepadCategory) -> Option<
 pub fn virtual_dpad_icon(pad: VirtualDPad, category: GamepadCategory) -> Option<&'static str> {
     let path = if pad == VirtualDPad::arrow_keys() || pad == VirtualDPad::wasd() {
         "kenney_input-prompts/Keyboard&Mouse/keyboard_arrows_all.png"
-    } else if pad == VirtualDPad::mouse_motion() {
-        "kenney_input-prompts/Keyboard&Mouse/mouse_move.png"
     } else if pad == VirtualDPad::dpad() {
         match category {
             GamepadCategory::Xbox => "kenney_input-prompts/Xbox/xbox_dpad_all.png",
@@ -103,12 +104,16 @@ pub fn virtual_dpad_icon(pad: VirtualDPad, category: GamepadCategory) -> Option<
     Some(path)
 }
 
+pub fn mouse_move_icon() -> &'static str {
+    "kenney_input-prompts/Keyboard&Mouse/mouse_move.png"
+}
+
 pub fn virtual_axis_icon(axis: VirtualAxis, category: GamepadCategory) -> Option<&'static str> {
     let path = if axis == VirtualAxis::ad() || axis == VirtualAxis::horizontal_arrow_keys() {
         "kenney_input-prompts/Keyboard&Mouse/keyboard_arrows_horizontal.png"
     } else if axis == VirtualAxis::ws() || axis == VirtualAxis::vertical_arrow_keys() {
         "kenney_input-prompts/Keyboard&Mouse/keyboard_arrows_vertical.png"
-    } else if axis == VirtualAxis::horizontal_dpad() {
+    } else if axis == VirtualAxis::dpad_x() {
         match category {
             GamepadCategory::Xbox => "kenney_input-prompts/Xbox/xbox_dpad_horizontal.png",
             GamepadCategory::PlayStation | GamepadCategory::Unknown => {
@@ -118,7 +123,7 @@ pub fn virtual_axis_icon(axis: VirtualAxis, category: GamepadCategory) -> Option
                 "kenney_input-prompts/SteamDeck/steamdeck_dpad_horizontal.png"
             }
         }
-    } else if axis == VirtualAxis::vertical_dpad() {
+    } else if axis == VirtualAxis::dpad_y() {
         match category {
             GamepadCategory::Xbox => "kenney_input-prompts/Xbox/xbox_dpad_vertical.png",
             GamepadCategory::PlayStation | GamepadCategory::Unknown => {
@@ -132,8 +137,8 @@ pub fn virtual_axis_icon(axis: VirtualAxis, category: GamepadCategory) -> Option
     Some(path)
 }
 
-pub fn dual_axis_icon(axis: DualAxis, category: GamepadCategory) -> Option<&'static str> {
-    let path = if axis == DualAxis::left_stick() {
+pub fn gamepad_stick_icon(axis: GamepadStick, category: GamepadCategory) -> Option<&'static str> {
+    let path = if axis == GamepadStick::LEFT {
         match category {
             GamepadCategory::Xbox => "kenney_input-prompts/Xbox/xbox_stick_l.png",
             GamepadCategory::PlayStation | GamepadCategory::Unknown => {
@@ -141,7 +146,7 @@ pub fn dual_axis_icon(axis: DualAxis, category: GamepadCategory) -> Option<&'sta
             }
             GamepadCategory::Steam => "kenney_input-prompts/SteamDeck/steamdeck_stick_l.png",
         }
-    } else if axis == DualAxis::right_stick() {
+    } else if axis == GamepadStick::RIGHT {
         match category {
             GamepadCategory::Xbox => "kenney_input-prompts/Xbox/xbox_stick_r.png",
             GamepadCategory::PlayStation | GamepadCategory::Unknown => {
@@ -149,8 +154,6 @@ pub fn dual_axis_icon(axis: DualAxis, category: GamepadCategory) -> Option<&'sta
             }
             GamepadCategory::Steam => "kenney_input-prompts/SteamDeck/steamdeck_stick_r.png",
         }
-    } else if axis == DualAxis::mouse_motion() {
-        "kenney_input-prompts/Keyboard&Mouse/mouse_move.png"
     } else {
         return None;
     };
@@ -158,70 +161,70 @@ pub fn dual_axis_icon(axis: DualAxis, category: GamepadCategory) -> Option<&'sta
 }
 
 #[rustfmt::skip]
-pub const fn playstation_icon(button: GamepadButtonType) -> Option<&'static str> {
+pub const fn playstation_icon(button: GamepadButton) -> Option<&'static str> {
     match button {
-        GamepadButtonType::South => Some("kenney_input-prompts/PlayStation/playstation_button_color_cross.png"),
-        GamepadButtonType::East => Some("kenney_input-prompts/PlayStation/playstation_button_color_circle.png"),
-        GamepadButtonType::North => Some("kenney_input-prompts/PlayStation/playstation_button_color_triangle.png"),
-        GamepadButtonType::West => Some("kenney_input-prompts/PlayStation/playstation_button_color_square.png"),
-        GamepadButtonType::LeftTrigger => Some("kenney_input-prompts/PlayStation/playstation_trigger_l1.png"),
-        GamepadButtonType::LeftTrigger2 => Some("kenney_input-prompts/PlayStation/playstation_trigger_l2.png"),
-        GamepadButtonType::RightTrigger => Some("kenney_input-prompts/PlayStation/playstation_trigger_r1.png"),
-        GamepadButtonType::RightTrigger2 => Some("kenney_input-prompts/PlayStation/playstation_trigger_r2.png"),
-        GamepadButtonType::Select => Some("kenney_input-prompts/PlayStation/playstation3_button_select.png"),
-        GamepadButtonType::Start => Some("kenney_input-prompts/PlayStation/playstation3_button_start.png"),
-        GamepadButtonType::LeftThumb => Some("kenney_input-prompts/PlayStation/playstation_stick_l.png"),
-        GamepadButtonType::RightThumb => Some("kenney_input-prompts/PlayStation/playstation_stick_r.png"),
-        GamepadButtonType::DPadUp => Some("kenney_input-prompts/PlayStation/playstation_dpad_up.png"),
-        GamepadButtonType::DPadDown => Some("kenney_input-prompts/PlayStation/playstation_dpad_down.png"),
-        GamepadButtonType::DPadLeft => Some("kenney_input-prompts/PlayStation/playstation_dpad_left.png"),
-        GamepadButtonType::DPadRight => Some("kenney_input-prompts/PlayStation/playstation_dpad_right.png"),
+        GamepadButton::South => Some("kenney_input-prompts/PlayStation/playstation_button_color_cross.png"),
+        GamepadButton::East => Some("kenney_input-prompts/PlayStation/playstation_button_color_circle.png"),
+        GamepadButton::North => Some("kenney_input-prompts/PlayStation/playstation_button_color_triangle.png"),
+        GamepadButton::West => Some("kenney_input-prompts/PlayStation/playstation_button_color_square.png"),
+        GamepadButton::LeftTrigger => Some("kenney_input-prompts/PlayStation/playstation_trigger_l1.png"),
+        GamepadButton::LeftTrigger2 => Some("kenney_input-prompts/PlayStation/playstation_trigger_l2.png"),
+        GamepadButton::RightTrigger => Some("kenney_input-prompts/PlayStation/playstation_trigger_r1.png"),
+        GamepadButton::RightTrigger2 => Some("kenney_input-prompts/PlayStation/playstation_trigger_r2.png"),
+        GamepadButton::Select => Some("kenney_input-prompts/PlayStation/playstation3_button_select.png"),
+        GamepadButton::Start => Some("kenney_input-prompts/PlayStation/playstation3_button_start.png"),
+        GamepadButton::LeftThumb => Some("kenney_input-prompts/PlayStation/playstation_stick_l.png"),
+        GamepadButton::RightThumb => Some("kenney_input-prompts/PlayStation/playstation_stick_r.png"),
+        GamepadButton::DPadUp => Some("kenney_input-prompts/PlayStation/playstation_dpad_up.png"),
+        GamepadButton::DPadDown => Some("kenney_input-prompts/PlayStation/playstation_dpad_down.png"),
+        GamepadButton::DPadLeft => Some("kenney_input-prompts/PlayStation/playstation_dpad_left.png"),
+        GamepadButton::DPadRight => Some("kenney_input-prompts/PlayStation/playstation_dpad_right.png"),
         _ => None,
     }
 }
 
 #[rustfmt::skip]
-pub const fn xbox_icon(button: GamepadButtonType) -> Option<&'static str> {
+pub const fn xbox_icon(button: GamepadButton) -> Option<&'static str> {
     match button {
-        GamepadButtonType::South => Some("kenney_input-prompts/Xbox/xbox_button_color_a.png"),
-        GamepadButtonType::East => Some("kenney_input-prompts/Xbox/xbox_button_color_b.png"),
-        GamepadButtonType::North => Some("kenney_input-prompts/Xbox/xbox_button_color_y.png"),
-        GamepadButtonType::West => Some("kenney_input-prompts/Xbox/xbox_button_color_x.png"),
-        GamepadButtonType::LeftTrigger => Some("kenney_input-prompts/Xbox/xbox_lb.png"),
-        GamepadButtonType::LeftTrigger2 => Some("kenney_input-prompts/Xbox/xbox_lt.png"),
-        GamepadButtonType::RightTrigger => Some("kenney_input-prompts/Xbox/xbox_rb.png"),
-        GamepadButtonType::RightTrigger2 => Some("kenney_input-prompts/Xbox/xbox_rt.png"),
-        GamepadButtonType::Select => Some("kenney_input-prompts/Xbox/xbox_button_start.png"),
-        GamepadButtonType::Start => Some("kenney_input-prompts/Xbox/xbox_button_menu.png"),
-        GamepadButtonType::LeftThumb => Some("kenney_input-prompts/Xbox/xbox_stick_l.png"),
-        GamepadButtonType::RightThumb => Some("kenney_input-prompts/Xbox/xbox_stick_r.png"),
-        GamepadButtonType::DPadUp => Some("kenney_input-prompts/Xbox/xbox_dpad_up.png"),
-        GamepadButtonType::DPadDown => Some("kenney_input-prompts/Xbox/xbox_dpad_down.png"),
-        GamepadButtonType::DPadLeft => Some("kenney_input-prompts/Xbox/xbox_dpad_left.png"),
-        GamepadButtonType::DPadRight => Some("kenney_input-prompts/Xbox/xbox_dpad_right.png"),
+        GamepadButton::South => Some("kenney_input-prompts/Xbox/xbox_button_color_a.png"),
+        GamepadButton::East => Some("kenney_input-prompts/Xbox/xbox_button_color_b.png"),
+        GamepadButton::North => Some("kenney_input-prompts/Xbox/xbox_button_color_y.png"),
+        GamepadButton::West => Some("kenney_input-prompts/Xbox/xbox_button_color_x.png"),
+        GamepadButton::LeftTrigger => Some("kenney_input-prompts/Xbox/xbox_lb.png"),
+        GamepadButton::LeftTrigger2 => Some("kenney_input-prompts/Xbox/xbox_lt.png"),
+        GamepadButton::RightTrigger => Some("kenney_input-prompts/Xbox/xbox_rb.png"),
+        GamepadButton::RightTrigger2 => Some("kenney_input-prompts/Xbox/xbox_rt.png"),
+        GamepadButton::Select => Some("kenney_input-prompts/Xbox/xbox_button_start.png"),
+        GamepadButton::Start => Some("kenney_input-prompts/Xbox/xbox_button_menu.png"),
+        GamepadButton::LeftThumb => Some("kenney_input-prompts/Xbox/xbox_stick_l.png"),
+        GamepadButton::RightThumb => Some("kenney_input-prompts/Xbox/xbox_stick_r.png"),
+        GamepadButton::DPadUp => Some("kenney_input-prompts/Xbox/xbox_dpad_up.png"),
+        GamepadButton::DPadDown => Some("kenney_input-prompts/Xbox/xbox_dpad_down.png"),
+        GamepadButton::DPadLeft => Some("kenney_input-prompts/Xbox/xbox_dpad_left.png"),
+        GamepadButton::DPadRight => Some("kenney_input-prompts/Xbox/xbox_dpad_right.png"),
         _ => None,
     }
 }
 
 #[rustfmt::skip]
-pub const fn steamdeck_icon(button: GamepadButtonType) -> Option<&'static str> {
+pub const fn steamdeck_icon(button: GamepadButton) -> Option<&'static str> {
     match button {
-        GamepadButtonType::South => Some("kenney_input-prompts/SteamDeck/steamdeck_button_a.png"),
-        GamepadButtonType::East => Some("kenney_input-prompts/SteamDeck/steamdeck_button_b.png"),
-        GamepadButtonType::North => Some("kenney_input-prompts/SteamDeck/steamdeck_button_y.png"),
-        GamepadButtonType::West => Some("kenney_input-prompts/SteamDeck/steamdeck_button_x.png"),
-        GamepadButtonType::LeftTrigger => Some("kenney_input-prompts/SteamDeck/steamdeck_button_l1.png"),
-        GamepadButtonType::LeftTrigger2 => Some("kenney_input-prompts/SteamDeck/steamdeck_button_l2.png"),
-        GamepadButtonType::RightTrigger => Some("kenney_input-prompts/SteamDeck/steamdeck_button_r1.png"),
-        GamepadButtonType::RightTrigger2 => Some("kenney_input-prompts/SteamDeck/steamdeck_button_r2.png"),
-        GamepadButtonType::Select => Some("kenney_input-prompts/SteamDeck/steamdeck_button_quickaccess.png"),
-        GamepadButtonType::Start => Some("kenney_input-prompts/SteamDeck/steamdeck_button_options.png"),
-        GamepadButtonType::LeftThumb => Some("kenney_input-prompts/SteamDeck/steamdeck_stick_l.png"),
-        GamepadButtonType::RightThumb => Some("kenney_input-prompts/SteamDeck/steamdeck_stick_r.png"),
-        GamepadButtonType::DPadUp => Some("kenney_input-prompts/SteamDeck/steamdeck_dpad_up.png"),
-        GamepadButtonType::DPadDown => Some("kenney_input-prompts/SteamDeck/steamdeck_dpad_down.png"),
-        GamepadButtonType::DPadLeft => Some("kenney_input-prompts/SteamDeck/steamdeck_dpad_left.png"),
-        GamepadButtonType::DPadRight => Some("kenney_input-prompts/SteamDeck/steamdeck_dpad_right.png"),
+        GamepadButton::South => Some("kenney_input-prompts/SteamDeck/steamdeck_button_a.png"),
+        GamepadButton::East => Some("kenney_input-prompts/SteamDeck/steamdeck_button_b.png"),
+        GamepadButton::North => Some("kenney_input-prompts/SteamDeck/steamdeck_button_y.png"),
+        GamepadButton::West => Some("kenney_input-prompts/SteamDeck/steamdeck_button_x.png"),
+        GamepadButton::LeftTrigger => Some("kenney_input-prompts/SteamDeck/steamdeck_button_l1.png"),
+        GamepadButton::LeftTrigger2 => Some("kenney_input-prompts/SteamDeck/steamdeck_button_l2.png"),
+        GamepadButton::RightTrigger => Some("kenney_input-prompts/SteamDeck/steamdeck_button_r1.png"),
+        GamepadButton::RightTrigger2 => Some("kenney_input-prompts/SteamDeck/steamdeck_button_r2.png"),
+        GamepadButton::Select => Some("kenney_input-prompts/SteamDeck/steamdeck_button_quickaccess.png"),
+        GamepadButton::Start => Some("kenney_input-prompts/SteamDeck/steamdeck_button_options.png"),
+        GamepadButton::LeftThumb => Some("kenney_input-prompts/SteamDeck/steamdeck_stick_l.png"),
+        GamepadButton::RightThumb => Some("kenney_input-prompts/SteamDeck/steamdeck_stick_r.png"),
+        GamepadButton::DPadUp => Some("kenney_input-prompts/SteamDeck/steamdeck_dpad_up.png"),
+        GamepadButton::DPadDown => Some("kenney_input-prompts/SteamDeck/steamdeck_dpad_down.png"),
+        GamepadButton::DPadLeft => Some("kenney_input-prompts/SteamDeck/steamdeck_dpad_left.png"),
+        GamepadButton::DPadRight => Some("kenney_input-prompts/SteamDeck/steamdeck_dpad_right.png"),
         _ => None,
     }
 }
@@ -239,10 +242,10 @@ pub const fn mouse_button_icon(button: MouseButton) -> Option<&'static str> {
 }
 
 #[rustfmt::skip]
-pub const fn mouse_wheel_icon(direction: MouseWheelDirection) -> Option<&'static str> {
-    match direction {
-        MouseWheelDirection::Up => Some("kenney_input-prompts/Keyboard&Mouse/mouse_scroll_up.png"),
-        MouseWheelDirection::Down => Some("kenney_input-prompts/Keyboard&Mouse/mouse_scroll_down.png"),
+pub const fn mouse_wheel_icon(direction: MouseScrollDirection) -> Option<&'static str> {
+    match direction.direction {
+        DualAxisDirection::Up => Some("kenney_input-prompts/Keyboard&Mouse/mouse_scroll_up.png"),
+        DualAxisDirection::Down => Some("kenney_input-prompts/Keyboard&Mouse/mouse_scroll_down.png"),
         _ => None,
     }
 }

@@ -27,7 +27,7 @@ impl Plugin for PlayerInputPlugin {
 pub enum GameController {
     KeyBoard,
     Gamepad {
-        gamepad: Gamepad,
+        gamepad: Entity,
         category: GamepadCategory,
     },
 }
@@ -64,7 +64,7 @@ impl Display for GameController {
             "{}",
             match self {
                 Self::KeyBoard => String::from("Keyboard"),
-                Self::Gamepad { gamepad, category } => format!("{category} Gamepad {}", gamepad.id),
+                Self::Gamepad { category, .. } => format!("{category} Gamepad"),
             }
         )
     }
@@ -77,8 +77,7 @@ pub struct PlayerInputBundle {
 
 impl PlayerInputBundle {
     pub fn new(controller: GameController, server: &AssetServer) -> Self {
-        let map = PlayerInput::input_map(controller);
-        let icons = InputMapIcons::new(&map, &controller, server);
+        let (map, icons) = PlayerInput::input_map(controller);
         Self {
             input: InputManagerBundle::with_map(map),
             icons,
@@ -115,36 +114,38 @@ impl PlayerInput {
         use PlayerInput::*;
         use PlayerSkill::*;
 
-        let mut map = InputMap::default();
         match controller {
             GameController::Gamepad { gamepad, .. } => {
-                map.set_gamepad(gamepad)
-                    .insert(Pause, GamepadButtonType::Start)
-                    .insert(Move, DualAxis::left_stick())
-                    .insert(Move, VirtualDPad::dpad())
-                    .insert(Aim, DualAxis::right_stick())
-                    .insert(Skill(Collect), GamepadButtonType::South)
-                    .insert(Skill(Shoot), GamepadButtonType::RightTrigger2)
-                    .insert(Skill(Defend), GamepadButtonType::LeftTrigger2)
-                    .insert(Skill(Dash), GamepadButtonType::East);
+                let map = InputMap::default()
+                    .with_gamepad(gamepad)
+                    .with(Pause, GamepadButton::Start)
+                    .with_dual_axis(Move, GamepadStick::LEFT)
+                    .with_dual_axis(Move, VirtualDPad::dpad())
+                    .with_dual_axis(Aim, GamepadStick::RIGHT)
+                    .with(Skill(Collect), GamepadButton::South)
+                    .with(Skill(Shoot), GamepadButton::RightTrigger2)
+                    .with(Skill(Defend), GamepadButton::LeftTrigger2)
+                    .with(Skill(Dash), GamepadButton::East);
+                map
             }
             GameController::KeyBoard => {
-                map.insert(Pause, KeyCode::Escape)
-                    .insert(Move, VirtualDPad::arrow_keys())
-                    .insert(Move, VirtualDPad::wasd())
-                    .insert(Aim, DualAxis::mouse_motion())
-                    .insert_one_to_many(Skill(Collect), [KeyCode::ShiftLeft, KeyCode::ShiftRight])
-                    .insert(Skill(Shoot), MouseButton::Left)
-                    .insert(Skill(Defend), MouseButton::Right)
-                    .insert(Skill(Dash), KeyCode::Space);
+                let map = InputMap::default()
+                    .with(Pause, KeyCode::Escape)
+                    .with_dual_axis(Move, VirtualDPad::arrow_keys())
+                    .with_dual_axis(Move, VirtualDPad::wasd())
+                    .with_dual_axis(Aim, MouseMove::default())
+                    .with_one_to_many(Skill(Collect), [KeyCode::ShiftLeft, KeyCode::ShiftRight])
+                    .with(Skill(Shoot), MouseButton::Left)
+                    .with(Skill(Defend), MouseButton::Right)
+                    .with(Skill(Dash), KeyCode::Space);
+                map
             }
         }
-        map
     }
 
     pub fn get_movement(state: &ActionState<Self>) -> Option<Vec2> {
         if state.pressed(&Self::Move) {
-            let dir = state.clamped_axis_pair(&Self::Move)?.xy().try_normalize()?;
+            let dir = state.clamped_axis_pair(&Self::Move).try_normalize()?;
             return Some(dir);
         }
         None
@@ -162,8 +163,8 @@ pub fn handle_new_controllers(
     let new_player_id = || players.values().max().copied().map(|v| v + 1).unwrap_or(0);
     for event in gamepad_evr.read() {
         match &event.connection {
-            GamepadConnection::Connected(info) => {
-                let category = GamepadCategory::from_name(&info.name);
+            GamepadConnection::Connected { name, .. } => {
+                let category = GamepadCategory::from_name(name);
                 let controller = GameController::Gamepad {
                     gamepad: event.gamepad,
                     category,

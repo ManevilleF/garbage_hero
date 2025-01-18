@@ -25,10 +25,12 @@ pub use player::{reset_players, Player, PlayerPlugin};
 pub use splash::SplashScreenPlugin;
 
 pub mod utils {
-    use bevy::render::{
-        render_asset::RenderAssetUsages,
-        render_resource::{Extent3d, TextureDimension, TextureFormat},
-        texture::Image,
+    use bevy::{
+        prelude::Image,
+        render::{
+            render_asset::RenderAssetUsages,
+            render_resource::{Extent3d, TextureDimension, TextureFormat},
+        },
     };
 
     // Creates a colorful test pattern

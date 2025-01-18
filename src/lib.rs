@@ -7,9 +7,7 @@ use bevy::{
     core_pipeline::experimental::taa::TemporalAntiAliasPlugin, ecs::world::Command, prelude::*,
     time::common_conditions::on_timer,
 };
-use bevy_mod_outline::{
-    AsyncSceneInheritOutlinePlugin, AutoGenerateOutlineNormalsPlugin, OutlinePlugin,
-};
+use bevy_mod_outline::{AutoGenerateOutlineNormalsPlugin, OutlinePlugin};
 
 mod plugins;
 
@@ -25,8 +23,10 @@ pub enum GameState {
     Pause,
 }
 
-#[derive(PhysicsLayer, Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(PhysicsLayer, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum ObjectLayer {
+    #[default]
+    Default,
     Player,
     Enemy,
     Map,
@@ -58,8 +58,8 @@ pub fn run() -> AppExit {
     .add_plugins((
         PhysicsPlugins::default(),
         OutlinePlugin,
-        AsyncSceneInheritOutlinePlugin,
-        AutoGenerateOutlineNormalsPlugin,
+        // AsyncSceneInheritOutlinePlugin,
+        AutoGenerateOutlineNormalsPlugin::default(),
         TemporalAntiAliasPlugin,
     ))
     // Physics config
@@ -182,8 +182,8 @@ pub fn handle_game_end(
         }
     };
     if ended {
-        commands.add(clear_all());
-        commands.add(reset_players);
-        commands.add(spawn_game_starters);
+        commands.queue(clear_all());
+        commands.queue(reset_players);
+        commands.queue(spawn_game_starters);
     }
 }

@@ -21,8 +21,8 @@ struct SplashScreen(Entity);
 pub fn setup(mut commands: Commands, server: Res<AssetServer>) {
     let texture = server.load("splash_screen.png");
     let entity = commands
-        .spawn(NodeBundle {
-            style: Style {
+        .spawn((
+            Node {
                 position_type: PositionType::Absolute,
                 width: Val::Percent(100.0),
                 height: Val::Percent(100.0),
@@ -30,29 +30,27 @@ pub fn setup(mut commands: Commands, server: Res<AssetServer>) {
                 align_items: AlignItems::Center,
                 ..default()
             },
-            background_color: BackgroundColor(Color::BLACK),
-            ..default()
-        })
+            BackgroundColor(Color::BLACK),
+        ))
         .with_children(|cmd| {
-            cmd.spawn(ImageBundle {
-                style: Style {
+            cmd.spawn((
+                Node {
                     width: Val::Px(700.0),
                     ..default()
                 },
-                image: UiImage {
-                    texture,
+                ImageNode {
+                    image: texture,
                     color: Color::WHITE,
                     ..default()
                 },
-                ..default()
-            });
+            ));
         })
         .id();
     commands.insert_resource(SplashScreen(entity));
 }
 
 fn stop_splash_screen(mut commands: Commands, screen: Res<SplashScreen>, time: Res<Time>) {
-    if time.elapsed_seconds() > SPLASH_DURATION {
+    if time.elapsed_secs() > SPLASH_DURATION {
         commands.entity(screen.0).despawn_recursive();
         commands.remove_resource::<SplashScreen>()
     }

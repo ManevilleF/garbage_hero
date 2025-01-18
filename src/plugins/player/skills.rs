@@ -1,8 +1,4 @@
-use avian3d::prelude::{ExternalImpulse, LinearVelocity};
-use bevy::{log, prelude::*, utils::HashMap};
-use leafwing_input_manager::action_state::ActionState;
-use strum::{Display, EnumIter, IntoEnumIterator};
-
+use super::{input::PlayerInput, GameController, Player};
 use crate::{
     plugins::{
         camera::CameraParams,
@@ -10,8 +6,10 @@ use crate::{
     },
     Dead, GameState,
 };
-
-use super::{input::PlayerInput, GameController, Player};
+use avian3d::prelude::{ExternalImpulse, LinearVelocity};
+use bevy::{log, prelude::*, utils::HashMap};
+use leafwing_input_manager::action_state::ActionState;
+use strum::{Display, EnumIter, IntoEnumIterator};
 
 pub struct PlayerSkillsPlugin;
 
@@ -146,7 +144,7 @@ fn update_aim(
                     continue;
                 };
                 let target = ray.origin + ray.direction * dist;
-                gizmos.sphere(target, Quat::default(), 0.1, Color::BLACK);
+                gizmos.sphere(target, 0.1, Color::BLACK);
                 let Ok(direction) = Dir2::new(target.xz() - player_pos.xz()) else {
                     log::error!(
                         "Failed to normalize direction between camera ray and player {}",
@@ -160,7 +158,7 @@ fn update_aim(
             GameController::Gamepad { .. } => {
                 let Some(dir) = action_state
                     .clamped_axis_pair(&PlayerInput::Aim)
-                    .map(Vec2::from)
+                    .try_normalize()
                 else {
                     continue;
                 };
@@ -181,7 +179,7 @@ fn update_skills(
         Has<Dead>,
     )>,
 ) {
-    let dt = time.delta_seconds();
+    let dt = time.delta_secs();
     for (mut state, mut active, input, dead) in &mut players {
         state
             .cooldowns
@@ -243,7 +241,7 @@ fn throw_skill(
         }
         for collector in collectors.iter_many(children) {
             if let Some(command) = collector.throw_collected(aim.direction2(), 70.0) {
-                commands.add(command);
+                commands.queue(command);
             } else {
                 log::info!("Player {}, Nothing to shoot", player.id);
             }
@@ -271,11 +269,11 @@ fn dash_skill(
 }
 
 fn apply_aim(time: Res<Time>, mut players: Query<(&mut Transform, &PlayerAim)>) {
-    let dt = time.delta_seconds();
+    let dt = time.delta_secs();
     for (mut tr, aim) in &mut players {
         let current = tr.forward().xz();
         let target: Vec2 = *aim.direction2();
-        let target_angle = target.angle_between(current);
+        let target_angle = target.angle_to(current);
         let max_step = aim.max_rotation_speed * dt;
         let angle = target_angle.clamp(-max_step, max_step);
         tr.rotate_axis(Dir3::Y, angle);

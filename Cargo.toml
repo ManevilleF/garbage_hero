@@ -11,6 +11,7 @@ debug = [
     "bevy-inspector-egui",
     "bevy/file_watcher",
     "bevy/bevy_dev_tools",
+    "bevy_mod_outline/reflect",
 ]
 debug_world = ["debug"]
 
@@ -18,7 +19,7 @@ debug_world = ["debug"]
 # Enum iter
 strum = { version = "0.26", features = ["derive"] }
 # Input map
-leafwing-input-manager = "0.14"
+leafwing-input-manager = "0.16"
 # PRNG
 rand = "0.8"
 # errors
@@ -26,23 +27,23 @@ thiserror = "1.0"
 
 # Physics
 [dependencies.avian3d]
-version = "0.1"
+version = "0.2"
 default-features = false
 features = ["3d", "f32", "parry-f32", "parallel", "simd"]
 
 [dependencies.bevy_mod_outline]
-version = "0.8"
+version = "0.9"
 default-features = false
+features = ["scene"]
 
 # particles
 [dependencies.bevy_hanabi]
-# version = "0.13"
-git = "ssh://git@github.com/djeedai/bevy_hanabi.git"
+version = "0.14"
 default-features = false
 features = ["3d"]
 
 [dependencies.bevy]
-version = "0.14"
+version = "0.15"
 default-features = false
 features = [
     "animation",
@@ -77,16 +78,16 @@ features = [
 ]
 
 [dependencies.bevy-inspector-egui]
-version = "0.25"
+version = "0.28"
 features = ["highlight_changes"]
 optional = true
 
 [dependencies.bevy_egui]
-version = "0.28"
+version = "0.31"
 optional = true
 
 [target.wasm32-unknown-unknown.dependencies]
-wasm-bindgen = "=0.2.92"
+wasm-bindgen = "=0.2.97"
 
 # Enable max optimizations for dependencies, but not for our code:
 [profile.dev.package."*"]

@@ -3,12 +3,10 @@ use std::f32::consts::FRAC_PI_4;
 use crate::{spawn_some_garbage, ObjectLayer, StartGame};
 use avian3d::prelude::*;
 use bevy::{
+    image::{ImageAddressMode, ImageLoaderSettings, ImageSampler, ImageSamplerDescriptor},
     math::Affine2,
     pbr::{NotShadowCaster, NotShadowReceiver},
     prelude::*,
-    render::texture::{
-        ImageAddressMode, ImageLoaderSettings, ImageSampler, ImageSamplerDescriptor,
-    },
 };
 use bevy_hanabi::{EffectProperties, ParticleEffect, ParticleEffectBundle};
 
@@ -33,7 +31,9 @@ pub struct Map;
 
 #[derive(Bundle)]
 pub struct MapElementBundle {
-    pub pbr: PbrBundle,
+    pub mesh: Mesh3d,
+    pub material: MeshMaterial3d<StandardMaterial>,
+    pub transform: Transform,
     pub collider: Collider,
     pub layers: CollisionLayers,
     pub name: Name,
@@ -44,7 +44,8 @@ pub struct MapElementBundle {
 
 #[derive(Bundle)]
 pub struct InvisibleMapElementBundle {
-    pub spatial: SpatialBundle,
+    pub transform: Transform,
+    pub visibility: Visibility,
     pub collider: Collider,
     pub layers: CollisionLayers,
     pub name: Name,
@@ -58,11 +59,9 @@ impl MapElementBundle {
         let mut mask = LayerMask::ALL;
         mask.remove(ObjectLayer::Map);
         Self {
-            pbr: PbrBundle {
-                mesh: assets.cube_mesh.clone_weak(),
-                material: assets.ground_mat.clone_weak(),
-                ..default()
-            },
+            mesh: Mesh3d(assets.cube_mesh.clone_weak()),
+            material: MeshMaterial3d(assets.ground_mat.clone_weak()),
+            transform: Default::default(),
             collider: Collider::cuboid(1.0, 1.0, 1.0),
             layers: CollisionLayers::new(ObjectLayer::Map, mask),
             body: RigidBody::Static,
@@ -78,7 +77,8 @@ impl InvisibleMapElementBundle {
         let mut mask = LayerMask::ALL;
         mask.remove(ObjectLayer::Map);
         Self {
-            spatial: Default::default(),
+            transform: Default::default(),
+            visibility: Default::default(),
             collider: Collider::cuboid(1.0, 1.0, 1.0),
             layers: CollisionLayers::new(ObjectLayer::Map, mask),
             body: RigidBody::Static,
@@ -91,21 +91,21 @@ impl InvisibleMapElementBundle {
 
 fn create_default_ground(mut commands: Commands, assets: Res<MapAssets>) {
     let mut ground = MapElementBundle::new_cube(&assets);
-    ground.pbr.transform.scale = Vec3::new(MAP_SIZE.x - 1.0, 1.0, MAP_SIZE.y - 1.0);
+    ground.transform.scale = Vec3::new(MAP_SIZE.x - 1.0, 1.0, MAP_SIZE.y - 1.0);
     ground.name = Name::new("Ground");
     commands.spawn(ground);
     let mut left = InvisibleMapElementBundle::new_cube();
-    left.spatial.transform.translation = Vec3::new(-MAP_SIZE.x / 2.0, 0.0, 0.0);
-    left.spatial.transform.scale = Vec3::new(1.0, 100.0, MAP_SIZE.y);
+    left.transform.translation = Vec3::new(-MAP_SIZE.x / 2.0, 0.0, 0.0);
+    left.transform.scale = Vec3::new(1.0, 100.0, MAP_SIZE.y);
     let mut right = InvisibleMapElementBundle::new_cube();
-    right.spatial.transform.translation = Vec3::new(MAP_SIZE.x / 2.0, 0.0, 0.0);
-    right.spatial.transform.scale = Vec3::new(1.0, 100.0, MAP_SIZE.y);
+    right.transform.translation = Vec3::new(MAP_SIZE.x / 2.0, 0.0, 0.0);
+    right.transform.scale = Vec3::new(1.0, 100.0, MAP_SIZE.y);
     let mut bot = InvisibleMapElementBundle::new_cube();
-    bot.spatial.transform.translation = Vec3::new(0.0, 0.0, -MAP_SIZE.y / 2.0);
-    bot.spatial.transform.scale = Vec3::new(MAP_SIZE.x, 100.0, 1.0);
+    bot.transform.translation = Vec3::new(0.0, 0.0, -MAP_SIZE.y / 2.0);
+    bot.transform.scale = Vec3::new(MAP_SIZE.x, 100.0, 1.0);
     let mut top = InvisibleMapElementBundle::new_cube();
-    top.spatial.transform.translation = Vec3::new(0.0, 0.0, MAP_SIZE.y / 2.0);
-    top.spatial.transform.scale = Vec3::new(MAP_SIZE.x, 100.0, 1.0);
+    top.transform.translation = Vec3::new(0.0, 0.0, MAP_SIZE.y / 2.0);
+    top.transform.scale = Vec3::new(MAP_SIZE.x, 100.0, 1.0);
     commands.spawn_batch([left, right, top, bot]);
 }
 
@@ -150,7 +150,7 @@ fn handle_game_starters(starters: Query<(&StartGame, &CollidingEntities)>, mut c
         if collision.is_empty() {
             continue;
         }
-        commands.add(*data);
+        commands.queue(*data);
     }
 }
 
@@ -193,13 +193,13 @@ pub fn spawn_game_starters(world: &mut World) {
     let assets = world.resource::<MapAssets>();
     let mesh = assets.spawner_mesh.clone_weak();
     let [easy_mat, normal_mat, hard_mat] = [
-        assets.easy_mat.clone_weak(),
-        assets.normal_mat.clone_weak(),
-        assets.hard_mat.clone_weak(),
+        MeshMaterial3d(assets.easy_mat.clone_weak()),
+        MeshMaterial3d(assets.normal_mat.clone_weak()),
+        MeshMaterial3d(assets.hard_mat.clone_weak()),
     ];
     world.spawn((
         easy_bundle,
-        mesh.clone_weak(),
+        Mesh3d(mesh.clone_weak()),
         easy_mat,
         NotShadowCaster,
         NotShadowReceiver,
@@ -207,14 +207,14 @@ pub fn spawn_game_starters(world: &mut World) {
 
     world.spawn((
         normal_bundle,
-        mesh.clone_weak(),
+        Mesh3d(mesh.clone_weak()),
         normal_mat,
         NotShadowCaster,
         NotShadowReceiver,
     ));
     world.spawn((
         hard_bundle,
-        mesh,
+        Mesh3d(mesh),
         hard_mat,
         NotShadowCaster,
         NotShadowReceiver,

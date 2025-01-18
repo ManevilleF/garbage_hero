@@ -10,7 +10,7 @@ use crate::{
 };
 use avian3d::prelude::*;
 use bevy::prelude::*;
-use bevy_mod_outline::{OutlineBundle, OutlineVolume};
+use bevy_mod_outline::OutlineVolume;
 use rand::{thread_rng, Rng};
 use std::f32::consts::TAU;
 
@@ -36,7 +36,9 @@ impl Plugin for AutoTurretPlugin {
 
 #[derive(Bundle)]
 pub struct AutoTurretBundle {
-    pub pbr: PbrBundle,
+    pub mesh: Mesh3d,
+    pub material: MeshMaterial3d<StandardMaterial>,
+    pub transform: Transform,
     pub enemy: Enemy,
     pub state: TurretState,
     pub rigidbody: RigidBody,
@@ -49,18 +51,15 @@ pub struct AutoTurretBundle {
     pub damage: Damage,
     pub name: Name,
     pub death: DeathEffect,
-    pub outline: OutlineBundle,
+    pub outline: OutlineVolume,
 }
 
 impl AutoTurretBundle {
     pub fn new(pos: Vec3, assets: &EnemyAssets) -> Self {
         Self {
-            pbr: PbrBundle {
-                material: assets.materials[0].clone_weak(),
-                mesh: assets.mesh.clone_weak(),
-                transform: Transform::from_translation(pos),
-                ..default()
-            },
+            material: MeshMaterial3d(assets.materials[0].clone_weak()),
+            mesh: Mesh3d(assets.mesh.clone_weak()),
+            transform: Transform::from_translation(pos),
             enemy: Enemy,
             rigidbody: RigidBody::Dynamic,
             collider: assets.collider.clone(),
@@ -76,13 +75,10 @@ impl AutoTurretBundle {
                 color: Color::BLACK,
                 radius: 1.0,
             },
-            outline: OutlineBundle {
-                outline: OutlineVolume {
-                    visible: false,
-                    width: 3.0,
-                    colour: Color::WHITE,
-                },
-                ..default()
+            outline: OutlineVolume {
+                visible: false,
+                width: 3.0,
+                colour: Color::WHITE,
             },
         }
     }
@@ -116,7 +112,7 @@ fn behave(
             }
             TurretState::Shoot(dir) => {
                 if let Some(command) = collector.throw_collected(dir, 50.0) {
-                    commands.add(command);
+                    commands.queue(command);
                 }
                 *state = TurretState::Idle;
             }

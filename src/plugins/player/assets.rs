@@ -9,7 +9,7 @@ use bevy::{
     pbr::{NotShadowCaster, NotShadowReceiver},
     prelude::*,
 };
-use bevy_mod_outline::{AsyncSceneInheritOutline, OutlineBundle, OutlineVolume};
+use bevy_mod_outline::{AsyncSceneInheritOutline, OutlineVolume};
 
 pub struct PlayerVisualsPlugin;
 
@@ -32,32 +32,27 @@ impl Plugin for PlayerVisualsPlugin {
 
 #[derive(Bundle)]
 pub struct PlayerVisualsBundle {
-    pub scene: SceneBundle,
-    pub outline: OutlineBundle,
+    pub scene: SceneRoot,
+    pub transform: Transform,
+    pub outline: OutlineVolume,
     pub async_outline: AsyncSceneInheritOutline,
 }
 
 impl PlayerVisualsBundle {
     pub fn new(id: usize, assets: &PlayerAssets) -> Self {
         Self {
-            scene: SceneBundle {
-                scene: assets.scenes[id].clone_weak(),
-                transform: Transform {
-                    translation: Vec3::new(0.0, -1.5, 0.0),
-                    scale: Vec3::splat(3.0),
-                    rotation: Quat::from_rotation_y(PI),
-                },
-                ..default()
+            scene: SceneRoot(assets.scenes[id].clone_weak()),
+            transform: Transform {
+                translation: Vec3::new(0.0, -1.5, 0.0),
+                scale: Vec3::splat(3.0),
+                rotation: Quat::from_rotation_y(PI),
             },
-            outline: OutlineBundle {
-                outline: OutlineVolume {
-                    visible: false,
-                    width: 3.0,
-                    colour: assets.colors[id],
-                },
-                ..default()
+            outline: OutlineVolume {
+                visible: false,
+                width: 3.0,
+                colour: assets.colors[id],
             },
-            async_outline: AsyncSceneInheritOutline,
+            async_outline: AsyncSceneInheritOutline::default(),
         }
     }
 }
@@ -78,7 +73,7 @@ fn setup_animations(
             continue;
         };
         commands.entity(entity).insert((
-            assets.animation_graphs[player.id as usize].clone_weak(),
+            AnimationGraphHandle(assets.animation_graphs[player.id as usize].clone_weak()),
             assets.animations[player.id as usize].clone(),
             RootPlayer(root),
         ));
@@ -115,7 +110,9 @@ pub struct PlayerAimMarker(Entity);
 
 #[derive(Bundle)]
 pub struct PlayerAimMarkerBundle {
-    pub pbr: PbrBundle,
+    pub mesh: Mesh3d,
+    pub material: MeshMaterial3d<StandardMaterial>,
+    pub transform: Transform,
     pub marker: PlayerAimMarker,
     pub name: Name,
     pub no_shadow_caster: NotShadowCaster,
@@ -125,12 +122,9 @@ pub struct PlayerAimMarkerBundle {
 impl PlayerAimMarkerBundle {
     pub fn new(id: usize, player_entity: Entity, assets: &PlayerAssets) -> Self {
         Self {
-            pbr: PbrBundle {
-                transform: Transform::from_xyz(0.0, 0.55, 0.0),
-                mesh: assets.marker_mesh.clone_weak(),
-                material: assets.marker_mats[id].clone_weak(),
-                ..default()
-            },
+            transform: Transform::from_xyz(0.0, 0.55, 0.0),
+            mesh: Mesh3d(assets.marker_mesh.clone_weak()),
+            material: MeshMaterial3d(assets.marker_mats[id].clone_weak()),
             marker: PlayerAimMarker(player_entity),
             name: Name::new(format!("Player {id} aim marker")),
             no_shadow_caster: NotShadowCaster,
