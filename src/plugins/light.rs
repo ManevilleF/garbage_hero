@@ -1,4 +1,4 @@
-use bevy::{color::palettes::css::*, pbr::DirectionalLightShadowMap, prelude::*};
+use bevy::{color::palettes::css::*, light::DirectionalLightShadowMap, prelude::*};
 
 pub struct LightPlugin;
 
@@ -12,19 +12,17 @@ impl Plugin for LightPlugin {
 fn setup(mut commands: Commands) {
     // UI cam
     commands.insert_resource(ClearColor(Color::from(ANTIQUE_WHITE)));
-    commands.insert_resource(AmbientLight {
+    commands.insert_resource(GlobalAmbientLight {
         color: Color::WHITE,
         brightness: light_consts::lux::OVERCAST_DAY,
+        affects_lightmapped_meshes: true,
     });
     // Light
     commands.spawn((
-        DirectionalLightBundle {
-            transform: Transform::from_xyz(15.0, 50.0, 15.0).looking_at(Vec3::ZERO, Vec3::Y),
-            directional_light: DirectionalLight {
-                illuminance: light_consts::lux::AMBIENT_DAYLIGHT,
-                shadows_enabled: true,
-                ..default()
-            },
+        Transform::from_xyz(15.0, 50.0, 15.0).looking_at(Vec3::ZERO, Vec3::Y),
+        DirectionalLight {
+            illuminance: light_consts::lux::AMBIENT_DAYLIGHT,
+            shadows_enabled: true,
             ..default()
         },
         Name::new("Sun Light"),

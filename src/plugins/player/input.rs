@@ -1,13 +1,13 @@
-use super::{skills::PlayerSkill, Player, PlayerConnected};
-use crate::{plugins::ui::input_icons::InputMapIcons, PauseGame};
+use super::{Player, PlayerConnected, skills::PlayerSkill};
+use crate::{PauseGame, plugins::ui::input_icons::InputMapIcons};
 use bevy::{
     input::{
         gamepad::{GamepadConnection, GamepadConnectionEvent},
         keyboard::KeyboardInput,
     },
     log,
+    platform::collections::HashMap,
     prelude::*,
-    utils::HashMap,
 };
 use leafwing_input_manager::prelude::*;
 use std::fmt::Display;
@@ -23,11 +23,11 @@ impl Plugin for PlayerInputPlugin {
     }
 }
 
-#[derive(Debug, Clone, Copy, Reflect, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Reflect, PartialEq, Eq, Hash, Component)]
 pub enum GameController {
     KeyBoard,
     Gamepad {
-        gamepad: Gamepad,
+        gamepad: Entity,
         category: GamepadCategory,
     },
 }
@@ -71,6 +71,7 @@ impl Display for GameController {
 }
 #[derive(Bundle)]
 pub struct PlayerInputBundle {
+    pub controller: GameController,
     pub input: InputManagerBundle<PlayerInput>,
     pub icons: InputMapIcons,
 }
@@ -80,6 +81,7 @@ impl PlayerInputBundle {
         let map = PlayerInput::input_map(controller);
         let icons = InputMapIcons::new(&map, &controller, server);
         Self {
+            controller,
             input: InputManagerBundle::with_map(map),
             icons,
         }
@@ -144,7 +146,7 @@ impl PlayerInput {
 
     pub fn get_movement(state: &ActionState<Self>) -> Option<Vec2> {
         if state.pressed(&Self::Move) {
-            let dir = state.clamped_axis_pair(&Self::Move)?.xy().try_normalize()?;
+            let dir = state.clamped_axis_pair(&Self::Move).xy().try_normalize()?;
             return Some(dir);
         }
         None
@@ -152,25 +154,25 @@ impl PlayerInput {
 }
 
 pub fn handle_new_controllers(
-    mut gamepad_evr: EventReader<GamepadConnectionEvent>,
-    mut keyboard_evr: EventReader<KeyboardInput>,
+    mut gamepad_evr: MessageReader<GamepadConnectionEvent>,
+    mut keyboard_evr: MessageReader<KeyboardInput>,
     players: Query<&Player>,
-    mut player_connected_evw: EventWriter<PlayerConnected>,
+    mut player_connected_evw: MessageWriter<PlayerConnected>,
 ) {
     let players: HashMap<GameController, u8> =
         players.iter().map(|p| (p.controller, p.id)).collect();
     let new_player_id = || players.values().max().copied().map(|v| v + 1).unwrap_or(0);
     for event in gamepad_evr.read() {
         match &event.connection {
-            GamepadConnection::Connected(info) => {
-                let category = GamepadCategory::from_name(&info.name);
+            GamepadConnection::Connected { name, .. } => {
+                let category = GamepadCategory::from_name(name);
                 let controller = GameController::Gamepad {
                     gamepad: event.gamepad,
                     category,
                 };
                 log::info!("New controller detected: {controller}");
                 if !players.contains_key(&controller) {
-                    player_connected_evw.send(PlayerConnected(Player {
+                    player_connected_evw.write(PlayerConnected(Player {
                         controller,
                         id: new_player_id(),
                     }));
@@ -184,7 +186,7 @@ pub fn handle_new_controllers(
     }
     if players.get(&GameController::KeyBoard).is_none() && !keyboard_evr.is_empty() {
         log::info!("Keyboard controller detected");
-        player_connected_evw.send(PlayerConnected(Player {
+        player_connected_evw.write(PlayerConnected(Player {
             controller: GameController::KeyBoard,
             id: new_player_id(),
         }));
@@ -194,12 +196,12 @@ pub fn handle_new_controllers(
 
 fn pause_game(
     players: Query<(&Player, &ActionState<PlayerInput>)>,
-    mut pause_evw: EventWriter<PauseGame>,
+    mut pause_evw: MessageWriter<PauseGame>,
 ) {
     for (player, state) in &players {
         if state.just_pressed(&PlayerInput::Pause) {
             log::info!("Pause triggered by player {}", player.id);
-            pause_evw.send_default();
+            pause_evw.write_default();
         }
     }
 }

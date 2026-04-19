@@ -2,7 +2,10 @@ use std::ops::Deref;
 
 use avian3d::prelude::*;
 use bevy::{
-    ecs::component::{ComponentHooks, StorageType},
+    ecs::{
+        component::{Mutable, StorageType},
+        lifecycle::ComponentHook,
+    },
     log,
     prelude::*,
 };
@@ -78,37 +81,42 @@ impl Invincible {
 
 impl Component for Invincible {
     const STORAGE_TYPE: StorageType = StorageType::SparseSet;
+    type Mutability = Mutable;
 
-    fn register_component_hooks(hooks: &mut ComponentHooks) {
-        hooks
-            .on_add(|mut world, entity, _| {
-                if let Some(mut volume) = world.get_mut::<OutlineVolume>(entity) {
-                    volume.visible = true;
-                } else if let Some(children) =
-                    world.get::<Children>(entity).map(|c| c.deref().to_vec())
-                {
-                    for entity in children {
-                        if let Some(mut volume) = world.get_mut::<OutlineVolume>(entity) {
-                            volume.visible = true;
-                            break;
-                        }
+    fn on_add() -> Option<ComponentHook> {
+        Some(|mut world, ctx| {
+            if let Some(mut volume) = world.get_mut::<OutlineVolume>(ctx.entity) {
+                volume.visible = true;
+            } else if let Some(children) = world
+                .get::<Children>(ctx.entity)
+                .map(|c| c.deref().to_vec())
+            {
+                for entity in children {
+                    if let Some(mut volume) = world.get_mut::<OutlineVolume>(entity) {
+                        volume.visible = true;
+                        break;
                     }
                 }
-            })
-            .on_remove(|mut world, entity, _| {
-                if let Some(mut volume) = world.get_mut::<OutlineVolume>(entity) {
-                    volume.visible = false;
-                } else if let Some(children) =
-                    world.get::<Children>(entity).map(|c| c.deref().to_vec())
-                {
-                    for entity in children {
-                        if let Some(mut volume) = world.get_mut::<OutlineVolume>(entity) {
-                            volume.visible = false;
-                            break;
-                        }
+            }
+        })
+    }
+
+    fn on_remove() -> Option<ComponentHook> {
+        Some(|mut world, ctx| {
+            if let Some(mut volume) = world.get_mut::<OutlineVolume>(ctx.entity) {
+                volume.visible = false;
+            } else if let Some(children) = world
+                .get::<Children>(ctx.entity)
+                .map(|c| c.deref().to_vec())
+            {
+                for entity in children {
+                    if let Some(mut volume) = world.get_mut::<OutlineVolume>(entity) {
+                        volume.visible = false;
+                        break;
                     }
                 }
-            });
+            }
+        })
     }
 }
 
@@ -131,7 +139,7 @@ fn tick_invincibility(
     time: Res<Time>,
     mut invincibility: Query<(Entity, &mut Invincible)>,
 ) {
-    let dt = time.delta_seconds();
+    let dt = time.delta_secs();
     for (entity, mut invincible) in &mut invincibility {
         if !invincible.tick(dt) {
             commands.entity(entity).remove::<Invincible>();
@@ -141,7 +149,7 @@ fn tick_invincibility(
 
 fn direct_damage(
     mut commands: Commands,
-    mut events: EventReader<CollisionStarted>,
+    mut events: MessageReader<CollisionStart>,
     mut entities: Query<
         (
             Option<&Damage>,
@@ -152,17 +160,25 @@ fn direct_damage(
         Or<(With<Health>, With<Damage>)>,
     >,
 ) {
-    for CollisionStarted(a, b) in events.read() {
+    for CollisionStart {
+        collider1,
+        collider2,
+        ..
+    } in events.read()
+    {
         let Ok(
-            [(damage_a, health_a, invicible_a, is_player_a), (damage_b, health_b, invicible_b, is_player_b)],
-        ) = entities.get_many_mut([*a, *b])
+            [
+                (damage_a, health_a, invicible_a, is_player_a),
+                (damage_b, health_b, invicible_b, is_player_b),
+            ],
+        ) = entities.get_many_mut([*collider1, *collider2])
         else {
             continue;
         };
         if !invicible_b {
             if let Some((damage, mut health)) = damage_a.zip(health_b) {
                 health.damage(damage.0);
-                commands.entity(*b).insert(if is_player_b {
+                commands.entity(*collider1).insert(if is_player_b {
                     Invincible::player()
                 } else {
                     Invincible::default()
@@ -172,7 +188,7 @@ fn direct_damage(
         if !invicible_a {
             if let Some((damage, mut health)) = damage_b.zip(health_a) {
                 health.damage(damage.0);
-                commands.entity(*a).insert(if is_player_a {
+                commands.entity(*collider2).insert(if is_player_a {
                     Invincible::player()
                 } else {
                     Invincible::default()
@@ -196,7 +212,7 @@ fn despawn_deads(mut commands: Commands, entities: Query<(Entity, Option<&Player
         if let Some(player) = player {
             log::info!("Player died: {}", player.id);
         } else {
-            commands.entity(entity).despawn_recursive();
+            commands.entity(entity).despawn();
         }
     }
 }

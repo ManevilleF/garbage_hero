@@ -1,9 +1,8 @@
 use super::{GarbageAssets, GarbageBundle, GarbageItem};
 use bevy::{
-    asset::{AssetLoader, AsyncReadExt, LoadedFolder, RecursiveDependencyLoadState},
-    ecs::world::Command,
+    asset::{AssetLoader, LoadedFolder, RecursiveDependencyLoadState, io::Reader},
+    platform::collections::HashMap,
     prelude::*,
-    utils::HashMap,
 };
 use thiserror::Error;
 
@@ -67,8 +66,8 @@ impl ItemBuild {
                 .map(|slot| {
                     let pos = slot.position * 1.05;
                     let mut bundle = GarbageBundle::new(slot.item, assets);
-                    bundle.pbr.transform.translation = transform.transform_point(pos);
-                    bundle.pbr.transform.rotation =
+                    bundle.transform.translation = transform.transform_point(pos);
+                    bundle.transform.rotation =
                         transform.rotation * Quat::from_rotation_y(slot.y_angle);
                     bundle
                 })
@@ -110,8 +109,8 @@ fn tick_loading_builds(
     asset_server: Res<AssetServer>,
     assets: Res<Assets<LoadedFolder>>,
 ) {
-    if Some(RecursiveDependencyLoadState::Loaded)
-        == asset_server.get_recursive_dependency_load_state(loading.0.id())
+    if let Some(RecursiveDependencyLoadState::Loaded) =
+        asset_server.get_recursive_dependency_load_state(loading.0.id())
     {
         let folder: &LoadedFolder = assets.get(&loading.0).unwrap();
         builds.0.extend(folder.handles.iter().cloned().map(|h| {
@@ -123,7 +122,7 @@ fn tick_loading_builds(
     }
 }
 
-#[derive(Default)]
+#[derive(Default, TypePath)]
 pub struct BuildLoader;
 
 /// Possible errors that can be produced by [`CustomAssetLoader`]
@@ -142,11 +141,11 @@ impl AssetLoader for BuildLoader {
     type Settings = ();
     type Error = BuildAssetError;
 
-    async fn load<'a>(
-        &'a self,
-        reader: &'a mut bevy::asset::io::Reader<'_>,
-        _settings: &'a Self::Settings,
-        _load_context: &'a mut bevy::asset::LoadContext<'_>,
+    async fn load(
+        &self,
+        reader: &mut dyn Reader,
+        _settings: &Self::Settings,
+        _load_context: &mut bevy::asset::LoadContext<'_>,
     ) -> Result<Self::Asset, Self::Error> {
         let mut bytes = Vec::new();
         reader.read_to_end(&mut bytes).await?;

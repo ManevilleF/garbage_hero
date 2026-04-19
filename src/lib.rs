@@ -4,12 +4,9 @@ use std::time::Duration;
 
 use avian3d::prelude::*;
 use bevy::{
-    core_pipeline::experimental::taa::TemporalAntiAliasPlugin, ecs::world::Command, prelude::*,
-    time::common_conditions::on_timer,
+    anti_alias::taa::TemporalAntiAliasPlugin, prelude::*, time::common_conditions::on_timer,
 };
-use bevy_mod_outline::{
-    AsyncSceneInheritOutlinePlugin, AutoGenerateOutlineNormalsPlugin, OutlinePlugin,
-};
+use bevy_mod_outline::{AutoGenerateOutlineNormalsPlugin, OutlinePlugin};
 
 mod plugins;
 
@@ -25,17 +22,18 @@ pub enum GameState {
     Pause,
 }
 
-#[derive(PhysicsLayer, Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(PhysicsLayer, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum ObjectLayer {
+    #[default]
+    Map,
     Player,
     Enemy,
-    Map,
     Bullet,
     Collectible,
     Collector,
 }
 
-#[derive(Event, Clone, Copy, Default)]
+#[derive(Message, Clone, Copy, Default)]
 pub struct PauseGame;
 
 pub fn run() -> AppExit {
@@ -43,7 +41,7 @@ pub fn run() -> AppExit {
     let mut app = App::new();
     app.add_plugins(DefaultPlugins.set(WindowPlugin {
         primary_window: Some(Window {
-            resolution: (1920.0, 1080.0).into(),
+            resolution: (1920, 1080).into(),
             name: Some(APP_NAME.to_string()),
             canvas: Some("#game-canvas".to_owned()),
             fit_canvas_to_parent: true,
@@ -52,14 +50,13 @@ pub fn run() -> AppExit {
         ..default()
     }))
     .init_state::<GameState>()
-    .add_event::<PauseGame>()
+    .add_message::<PauseGame>()
     .register_type::<StartGame>()
     // Built in
     .add_plugins((
-        PhysicsPlugins::default(),
+        PhysicsPlugins::default().with_collision_hooks::<ThrownItemHooks>(),
         OutlinePlugin,
-        AsyncSceneInheritOutlinePlugin,
-        AutoGenerateOutlineNormalsPlugin,
+        AutoGenerateOutlineNormalsPlugin::default(),
         TemporalAntiAliasPlugin,
     ))
     // Physics config
@@ -96,7 +93,7 @@ pub fn run() -> AppExit {
 fn handle_pause(
     state: Res<State<GameState>>,
     mut nextstate: ResMut<NextState<GameState>>,
-    mut events: EventReader<PauseGame>,
+    mut events: MessageReader<PauseGame>,
     mut physics_time: ResMut<Time<Physics>>,
 ) {
     if events.is_empty() {
@@ -126,7 +123,7 @@ pub fn clear_all() -> impl FnOnce(&mut World) {
         entities.extend(starters_q.iter(world));
         let mut commands = world.commands();
         for entity in entities {
-            commands.entity(entity).despawn_recursive();
+            commands.entity(entity).despawn();
         }
         let mut animations = world.query::<&mut AnimationPlayer>();
         for mut anim in animations.iter_mut(world) {
@@ -182,8 +179,8 @@ pub fn handle_game_end(
         }
     };
     if ended {
-        commands.add(clear_all());
-        commands.add(reset_players);
-        commands.add(spawn_game_starters);
+        commands.queue(clear_all());
+        commands.queue(reset_players);
+        commands.queue(spawn_game_starters);
     }
 }

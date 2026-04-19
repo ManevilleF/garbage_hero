@@ -1,17 +1,17 @@
 use super::{
-    assets::EnemyAssets, Enemy, PlayerDetectorBundle, SpawnTurret, TargetPlayer, ENEMY_COLOR,
+    ENEMY_COLOR, Enemy, PlayerDetectorBundle, SpawnTurret, TargetPlayer, assets::EnemyAssets,
 };
 use crate::{
+    Damage, GameState, Health, ObjectLayer, ParticleConfig,
     plugins::{
         garbage::{Collector, CollectorBundle, CollectorParticlesBundle},
         particles::DeathEffect,
     },
-    Damage, GameState, Health, ObjectLayer, ParticleConfig,
 };
 use avian3d::prelude::*;
 use bevy::prelude::*;
-use bevy_mod_outline::{OutlineBundle, OutlineVolume};
-use rand::{thread_rng, Rng};
+use bevy_mod_outline::OutlineVolume;
+use rand::{Rng, rng};
 use std::f32::consts::TAU;
 
 const BASE_HEALTH: u16 = 40;
@@ -36,7 +36,10 @@ impl Plugin for AutoTurretPlugin {
 
 #[derive(Bundle)]
 pub struct AutoTurretBundle {
-    pub pbr: PbrBundle,
+    pub transform: Transform,
+    pub material: MeshMaterial3d<StandardMaterial>,
+    pub mesh: Mesh3d,
+    pub visibility: Visibility,
     pub enemy: Enemy,
     pub state: TurretState,
     pub rigidbody: RigidBody,
@@ -49,18 +52,16 @@ pub struct AutoTurretBundle {
     pub damage: Damage,
     pub name: Name,
     pub death: DeathEffect,
-    pub outline: OutlineBundle,
+    pub outline: OutlineVolume,
 }
 
 impl AutoTurretBundle {
     pub fn new(pos: Vec3, assets: &EnemyAssets) -> Self {
         Self {
-            pbr: PbrBundle {
-                material: assets.materials[0].clone_weak(),
-                mesh: assets.mesh.clone_weak(),
-                transform: Transform::from_translation(pos),
-                ..default()
-            },
+            material: assets.materials[0].clone(),
+            mesh: assets.mesh.clone(),
+            transform: Transform::from_translation(pos),
+            visibility: Visibility::Inherited,
             enemy: Enemy,
             rigidbody: RigidBody::Dynamic,
             collider: assets.collider.clone(),
@@ -76,13 +77,10 @@ impl AutoTurretBundle {
                 color: Color::BLACK,
                 radius: 1.0,
             },
-            outline: OutlineBundle {
-                outline: OutlineVolume {
-                    visible: false,
-                    width: 3.0,
-                    colour: Color::WHITE,
-                },
-                ..default()
+            outline: OutlineVolume {
+                visible: false,
+                width: 3.0,
+                colour: Color::WHITE,
             },
         }
     }
@@ -98,25 +96,27 @@ pub enum TurretState {
 
 fn behave(
     mut commands: Commands,
-    mut enemies: Query<(Entity, &LinearVelocity, &mut TurretState, &Children)>,
+    mut enemies: Query<(&mut TurretState, &Children, Forces)>,
     collectors: Query<&Collector>,
 ) {
-    for (entity, linvel, mut state, children) in &mut enemies {
+    for (mut state, children, mut forces) in &mut enemies {
         let collector = collectors.iter_many(children).next().unwrap();
         match *state {
             TurretState::Idle => {
-                if collector.len() < MIN_ITEMS && linvel.length_squared() < IDLE_TRESHOLD {
+                if collector.len() < MIN_ITEMS
+                    && forces.linear_velocity().length_squared() < IDLE_TRESHOLD
+                {
                     // TOO: use a rng resource
-                    let mut rng = thread_rng();
-                    let angle = rng.gen_range(0.0..=TAU);
-                    commands.entity(entity).insert(ExternalImpulse::new(
+                    let mut rng = rng();
+                    let angle = rng.random_range(0.0..=TAU);
+                    forces.apply_linear_impulse(
                         Vec3::new(angle.cos(), 0.0, angle.sin()) * IMPULSE_SPEED,
-                    ));
+                    );
                 }
             }
             TurretState::Shoot(dir) => {
                 if let Some(command) = collector.throw_collected(dir, 50.0) {
-                    commands.add(command);
+                    commands.queue(command);
                 }
                 *state = TurretState::Idle;
             }
@@ -143,7 +143,7 @@ fn detect_players(
 }
 
 fn spawn_turret(
-    mut events: EventReader<SpawnTurret>,
+    mut events: MessageReader<SpawnTurret>,
     mut commands: Commands,
     assets: Res<EnemyAssets>,
     particles: Res<ParticleConfig>,
@@ -158,10 +158,8 @@ fn spawn_turret(
         let mut collector_bundle =
             CollectorBundle::growing(5.0, 3.0, ENEMY_COLOR, 6, ObjectLayer::Enemy);
         collector_bundle.config.enabled = true;
-        let collector = commands.spawn(collector_bundle).set_parent(enemy).id();
-        commands
-            .spawn(PlayerDetectorBundle::sphere(30.0, 0.5))
-            .set_parent(enemy);
+        let collector = commands.spawn((collector_bundle, ChildOf(enemy))).id();
+        commands.spawn((PlayerDetectorBundle::sphere(30.0, 0.5), ChildOf(enemy)));
         commands.spawn(CollectorParticlesBundle::new(
             collector,
             ENEMY_COLOR,

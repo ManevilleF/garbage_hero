@@ -1,4 +1,4 @@
-use crate::{plugins::particles::DeathEffect, Health, ObjectLayer};
+use crate::{Health, ObjectLayer, plugins::particles::DeathEffect};
 use avian3d::prelude::*;
 use bevy::{color::palettes::css::*, prelude::*};
 use strum::{Display, EnumIter, IntoEnumIterator};
@@ -81,7 +81,10 @@ impl GarbageItem {
 #[derive(Bundle)]
 pub struct GarbageBundle {
     pub collectible: GarbageItem,
-    pub pbr: PbrBundle,
+    pub transform: Transform,
+    pub material: MeshMaterial3d<StandardMaterial>,
+    pub mesh: Mesh3d,
+    pub visibility: Visibility,
     pub rigidbody: RigidBody,
     pub collider: Collider,
     pub margin: CollisionMargin,
@@ -98,11 +101,10 @@ impl GarbageBundle {
     pub fn new(collectible: GarbageItem, assets: &GarbageAssets) -> Self {
         Self {
             collectible,
-            pbr: PbrBundle {
-                mesh: assets.meshes[collectible as usize].clone_weak(),
-                material: assets.materials[collectible as usize].clone_weak(),
-                ..default()
-            },
+            mesh: assets.meshes[collectible as usize].clone(),
+            material: assets.materials[collectible as usize].clone(),
+            transform: Transform::default(),
+            visibility: Visibility::default(),
             rigidbody: RigidBody::Dynamic,
             collider: assets.colliders[collectible as usize].clone(),
             margin: CollisionMargin(0.02),
@@ -123,10 +125,10 @@ impl GarbageBundle {
 #[derive(Resource, Reflect)]
 #[reflect(Resource)]
 pub struct GarbageAssets {
-    pub meshes: Vec<Handle<Mesh>>,
+    pub meshes: Vec<Mesh3d>,
     #[reflect(ignore)]
     pub colliders: Vec<Collider>,
-    pub materials: Vec<Handle<StandardMaterial>>,
+    pub materials: Vec<MeshMaterial3d<StandardMaterial>>,
 }
 
 impl FromWorld for GarbageAssets {
@@ -140,14 +142,18 @@ impl FromWorld for GarbageAssets {
         };
         let materials = GarbageItem::iter()
             .map(|c| {
-                materials.add(StandardMaterial {
-                    base_color: c.color(),
-                    ..base_material.clone()
-                })
+                materials
+                    .add(StandardMaterial {
+                        base_color: c.color(),
+                        ..base_material.clone()
+                    })
+                    .into()
             })
             .collect();
         let mut meshes = world.resource_mut::<Assets<Mesh>>();
-        let meshes = GarbageItem::iter().map(|c| meshes.add(c.mesh())).collect();
+        let meshes = GarbageItem::iter()
+            .map(|c| meshes.add(c.mesh()).into())
+            .collect();
         let colliders = GarbageItem::iter().map(GarbageItem::collider).collect();
         Self {
             meshes,

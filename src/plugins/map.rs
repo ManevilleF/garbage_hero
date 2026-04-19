@@ -1,16 +1,14 @@
 use std::f32::consts::FRAC_PI_4;
 
-use crate::{spawn_some_garbage, ObjectLayer, StartGame};
+use crate::{ObjectLayer, StartGame, spawn_some_garbage};
 use avian3d::prelude::*;
 use bevy::{
+    image::{ImageAddressMode, ImageLoaderSettings, ImageSampler, ImageSamplerDescriptor},
+    light::{NotShadowCaster, NotShadowReceiver},
     math::Affine2,
-    pbr::{NotShadowCaster, NotShadowReceiver},
     prelude::*,
-    render::texture::{
-        ImageAddressMode, ImageLoaderSettings, ImageSampler, ImageSamplerDescriptor,
-    },
 };
-use bevy_hanabi::{EffectProperties, ParticleEffect, ParticleEffectBundle};
+use bevy_hanabi::{EffectProperties, ParticleEffect};
 
 use super::ParticleConfig;
 
@@ -33,7 +31,9 @@ pub struct Map;
 
 #[derive(Bundle)]
 pub struct MapElementBundle {
-    pub pbr: PbrBundle,
+    pub mesh: Mesh3d,
+    pub material: MeshMaterial3d<StandardMaterial>,
+    pub transform: Transform,
     pub collider: Collider,
     pub layers: CollisionLayers,
     pub name: Name,
@@ -44,7 +44,7 @@ pub struct MapElementBundle {
 
 #[derive(Bundle)]
 pub struct InvisibleMapElementBundle {
-    pub spatial: SpatialBundle,
+    pub transform: Transform,
     pub collider: Collider,
     pub layers: CollisionLayers,
     pub name: Name,
@@ -58,11 +58,9 @@ impl MapElementBundle {
         let mut mask = LayerMask::ALL;
         mask.remove(ObjectLayer::Map);
         Self {
-            pbr: PbrBundle {
-                mesh: assets.cube_mesh.clone_weak(),
-                material: assets.ground_mat.clone_weak(),
-                ..default()
-            },
+            mesh: assets.cube_mesh.clone(),
+            material: assets.ground_mat.clone(),
+            transform: Transform::default(),
             collider: Collider::cuboid(1.0, 1.0, 1.0),
             layers: CollisionLayers::new(ObjectLayer::Map, mask),
             body: RigidBody::Static,
@@ -78,7 +76,7 @@ impl InvisibleMapElementBundle {
         let mut mask = LayerMask::ALL;
         mask.remove(ObjectLayer::Map);
         Self {
-            spatial: Default::default(),
+            transform: Transform::default(),
             collider: Collider::cuboid(1.0, 1.0, 1.0),
             layers: CollisionLayers::new(ObjectLayer::Map, mask),
             body: RigidBody::Static,
@@ -91,21 +89,21 @@ impl InvisibleMapElementBundle {
 
 fn create_default_ground(mut commands: Commands, assets: Res<MapAssets>) {
     let mut ground = MapElementBundle::new_cube(&assets);
-    ground.pbr.transform.scale = Vec3::new(MAP_SIZE.x - 1.0, 1.0, MAP_SIZE.y - 1.0);
+    ground.transform.scale = Vec3::new(MAP_SIZE.x - 1.0, 1.0, MAP_SIZE.y - 1.0);
     ground.name = Name::new("Ground");
     commands.spawn(ground);
     let mut left = InvisibleMapElementBundle::new_cube();
-    left.spatial.transform.translation = Vec3::new(-MAP_SIZE.x / 2.0, 0.0, 0.0);
-    left.spatial.transform.scale = Vec3::new(1.0, 100.0, MAP_SIZE.y);
+    left.transform.translation = Vec3::new(-MAP_SIZE.x / 2.0, 0.0, 0.0);
+    left.transform.scale = Vec3::new(1.0, 100.0, MAP_SIZE.y);
     let mut right = InvisibleMapElementBundle::new_cube();
-    right.spatial.transform.translation = Vec3::new(MAP_SIZE.x / 2.0, 0.0, 0.0);
-    right.spatial.transform.scale = Vec3::new(1.0, 100.0, MAP_SIZE.y);
+    right.transform.translation = Vec3::new(MAP_SIZE.x / 2.0, 0.0, 0.0);
+    right.transform.scale = Vec3::new(1.0, 100.0, MAP_SIZE.y);
     let mut bot = InvisibleMapElementBundle::new_cube();
-    bot.spatial.transform.translation = Vec3::new(0.0, 0.0, -MAP_SIZE.y / 2.0);
-    bot.spatial.transform.scale = Vec3::new(MAP_SIZE.x, 100.0, 1.0);
+    bot.transform.translation = Vec3::new(0.0, 0.0, -MAP_SIZE.y / 2.0);
+    bot.transform.scale = Vec3::new(MAP_SIZE.x, 100.0, 1.0);
     let mut top = InvisibleMapElementBundle::new_cube();
-    top.spatial.transform.translation = Vec3::new(0.0, 0.0, MAP_SIZE.y / 2.0);
-    top.spatial.transform.scale = Vec3::new(MAP_SIZE.x, 100.0, 1.0);
+    top.transform.translation = Vec3::new(0.0, 0.0, MAP_SIZE.y / 2.0);
+    top.transform.scale = Vec3::new(MAP_SIZE.x, 100.0, 1.0);
     commands.spawn_batch([left, right, top, bot]);
 }
 
@@ -115,7 +113,9 @@ struct GameStarterBundle {
     pub data: StartGame,
     pub collider: Collider,
     pub sensor: Sensor,
-    pub particles: ParticleEffectBundle,
+    pub effect: ParticleEffect,
+    pub transform: Transform,
+    pub effect_properties: EffectProperties,
     pub layer: CollisionLayers,
 }
 
@@ -132,14 +132,11 @@ impl GameStarterBundle {
             data,
             collider: Collider::sphere(4.0),
             sensor: Sensor,
-            particles: ParticleEffectBundle {
-                transform: Transform::from_xyz(pos.x, 1.0, pos.y),
-                effect: ParticleEffect::new(particles.collector_effect.clone()),
-                effect_properties: EffectProperties::default()
-                    .with_properties([("color".to_owned(), ParticleConfig::color_to_value(color))])
-                    .with_properties([("radius".to_owned(), 5.0.into())]),
-                ..default()
-            },
+            transform: Transform::from_xyz(pos.x, 1.0, pos.y),
+            effect: ParticleEffect::new(particles.collector_effect.clone()),
+            effect_properties: EffectProperties::default()
+                .with_properties([("color".to_owned(), ParticleConfig::color_to_value(color))])
+                .with_properties([("radius".to_owned(), 5.0.into())]),
             layer: CollisionLayers::new(ObjectLayer::Map, ObjectLayer::Player),
         }
     }
@@ -150,7 +147,7 @@ fn handle_game_starters(starters: Query<(&StartGame, &CollidingEntities)>, mut c
         if collision.is_empty() {
             continue;
         }
-        commands.add(*data);
+        commands.queue(*data);
     }
 }
 
@@ -191,15 +188,15 @@ pub fn spawn_game_starters(world: &mut World) {
         particles,
     );
     let assets = world.resource::<MapAssets>();
-    let mesh = assets.spawner_mesh.clone_weak();
+    let mesh = assets.spawner_mesh.clone();
     let [easy_mat, normal_mat, hard_mat] = [
-        assets.easy_mat.clone_weak(),
-        assets.normal_mat.clone_weak(),
-        assets.hard_mat.clone_weak(),
+        assets.easy_mat.clone(),
+        assets.normal_mat.clone(),
+        assets.hard_mat.clone(),
     ];
     world.spawn((
         easy_bundle,
-        mesh.clone_weak(),
+        mesh.clone(),
         easy_mat,
         NotShadowCaster,
         NotShadowReceiver,
@@ -207,7 +204,7 @@ pub fn spawn_game_starters(world: &mut World) {
 
     world.spawn((
         normal_bundle,
-        mesh.clone_weak(),
+        mesh.clone(),
         normal_mat,
         NotShadowCaster,
         NotShadowReceiver,
@@ -225,12 +222,12 @@ pub fn spawn_game_starters(world: &mut World) {
 #[derive(Debug, Resource, Reflect)]
 #[reflect(Resource)]
 pub struct MapAssets {
-    cube_mesh: Handle<Mesh>,
-    spawner_mesh: Handle<Mesh>,
-    easy_mat: Handle<StandardMaterial>,
-    normal_mat: Handle<StandardMaterial>,
-    hard_mat: Handle<StandardMaterial>,
-    ground_mat: Handle<StandardMaterial>,
+    cube_mesh: Mesh3d,
+    spawner_mesh: Mesh3d,
+    easy_mat: MeshMaterial3d<StandardMaterial>,
+    normal_mat: MeshMaterial3d<StandardMaterial>,
+    hard_mat: MeshMaterial3d<StandardMaterial>,
+    ground_mat: MeshMaterial3d<StandardMaterial>,
 }
 
 impl FromWorld for MapAssets {
@@ -251,33 +248,44 @@ impl FromWorld for MapAssets {
         let normal_texture = server.load("textures/normal.png");
         let hard_texture = server.load("textures/hard.png");
         let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
-        let ground_mat = materials.add(StandardMaterial {
-            base_color: Color::Srgba(bevy::color::palettes::css::DARK_SALMON),
-            base_color_texture: Some(wood_texture),
-            uv_transform: Affine2::from_mat2(Mat2::from_scale_angle(MAP_SIZE / 20.0, FRAC_PI_4)),
-            ..default()
-        });
-        let easy_mat = materials.add(StandardMaterial {
-            base_color_texture: Some(easy_texture),
-            alpha_mode: AlphaMode::Blend,
-            unlit: true,
-            ..default()
-        });
-        let normal_mat = materials.add(StandardMaterial {
-            base_color_texture: Some(normal_texture),
-            alpha_mode: AlphaMode::Blend,
-            unlit: true,
-            ..default()
-        });
-        let hard_mat = materials.add(StandardMaterial {
-            base_color_texture: Some(hard_texture),
-            alpha_mode: AlphaMode::Blend,
-            unlit: true,
-            ..default()
-        });
+        let ground_mat = materials
+            .add(StandardMaterial {
+                base_color: Color::Srgba(bevy::color::palettes::css::DARK_SALMON),
+                base_color_texture: Some(wood_texture),
+                uv_transform: Affine2::from_mat2(Mat2::from_scale_angle(
+                    MAP_SIZE / 20.0,
+                    FRAC_PI_4,
+                )),
+                ..default()
+            })
+            .into();
+        let easy_mat = materials
+            .add(StandardMaterial {
+                base_color_texture: Some(easy_texture),
+                alpha_mode: AlphaMode::Blend,
+                unlit: true,
+                ..default()
+            })
+            .into();
+        let normal_mat = materials
+            .add(StandardMaterial {
+                base_color_texture: Some(normal_texture),
+                alpha_mode: AlphaMode::Blend,
+                unlit: true,
+                ..default()
+            })
+            .into();
+        let hard_mat = materials
+            .add(StandardMaterial {
+                base_color_texture: Some(hard_texture),
+                alpha_mode: AlphaMode::Blend,
+                unlit: true,
+                ..default()
+            })
+            .into();
         let mut meshes = world.resource_mut::<Assets<Mesh>>();
-        let cube_mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
-        let spawner_mesh = meshes.add(Plane3d::new(Vec3::Y, Vec2::splat(5.0)));
+        let cube_mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0)).into();
+        let spawner_mesh = meshes.add(Plane3d::new(Vec3::Y, Vec2::splat(5.0))).into();
         Self {
             cube_mesh,
             spawner_mesh,

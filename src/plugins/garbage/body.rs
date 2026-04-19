@@ -12,12 +12,7 @@ impl Plugin for GarbageBodyPlugin {
             .add_systems(FixedUpdate, update_bodies);
 
         #[cfg(feature = "debug")]
-        app.add_systems(
-            PostUpdate,
-            draw_gizmos
-                .after(avian3d::prelude::PhysicsSet::Sync)
-                .before(TransformSystem::TransformPropagate),
-        );
+        app.add_systems(PostUpdate, draw_gizmos.before(TransformSystems::Propagate));
     }
 }
 

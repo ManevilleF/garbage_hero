@@ -1,4 +1,4 @@
-use bevy::{ecs::world::Command, prelude::*};
+use bevy::prelude::*;
 use std::f32::consts::PI;
 
 mod body;
@@ -16,12 +16,12 @@ pub use collected::Collected;
 pub use collector::{Collector, CollectorBundle, CollectorConfig, CollectorParticlesBundle};
 pub use distribution::{DistributionShape, PointDistribution};
 pub use items::{GarbageAssets, GarbageBundle, GarbageItem};
-pub use throw::ThrownItem;
+pub use throw::{ThrownItem, ThrownItemHooks};
 
 use builds::ItemBuildsPlugin;
 use collected::CollectedPlugin;
 use collector::CollectorPlugin;
-use rand::{seq::IteratorRandom, thread_rng, Rng};
+use rand::{Rng, rng, seq::IteratorRandom};
 use strum::IntoEnumIterator;
 use throw::ThrowPlugin;
 
@@ -54,7 +54,7 @@ pub fn spawn_some_garbage(
     let offset = offset.unwrap_or(Vec2::ZERO);
     move |world| {
         let square = Rectangle::new(size.x, size.y);
-        let mut rng = thread_rng();
+        let mut rng = rng();
         let assets = world.resource::<GarbageAssets>();
         let bundles: Vec<_> = (0..amount)
             .map(|_| {
@@ -62,7 +62,7 @@ pub fn spawn_some_garbage(
                 let pos = offset + square.sample_interior(&mut rng);
                 let position = Vec3::new(pos.x, 1.0, pos.y);
                 let mut bundle = GarbageBundle::new(item, assets);
-                bundle.pbr.transform.translation = position;
+                bundle.transform.translation = position;
                 bundle
             })
             .collect();
@@ -79,14 +79,14 @@ pub fn spawn_builds(
     let offset = offset.unwrap_or(Vec2::ZERO);
     move |world| {
         let square = Rectangle::new(size.x, size.y);
-        let mut rng = thread_rng();
+        let mut rng = rng();
         let builds = world.resource::<AvailableItemBuilds>();
         let commands: Vec<_> = (0..amount)
             .map(|_| {
-                let handle = builds.values().choose(&mut rng).unwrap().clone_weak();
+                let handle = builds.values().choose(&mut rng).unwrap().clone();
                 let pos = offset + square.sample_interior(&mut rng);
                 let position = Vec3::new(pos.x, 1.0, pos.y);
-                let angle = rng.gen_range(0.0..PI);
+                let angle = rng.random_range(0.0..PI);
                 SpawnBuild {
                     handle,
                     position,

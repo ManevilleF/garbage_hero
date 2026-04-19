@@ -15,20 +15,20 @@ pub use camera::CameraPlugin;
 pub use common::*;
 #[cfg(feature = "debug")]
 pub use debug::DebugPlugin;
-pub use enemies::{spawn_enemies, EnemiesPlugin, Enemy};
-pub use garbage::{spawn_builds, spawn_some_garbage, GarbageItem, GarbagePlugin};
+pub use enemies::{EnemiesPlugin, Enemy, spawn_enemies};
+pub use garbage::{GarbageItem, GarbagePlugin, ThrownItemHooks, spawn_builds, spawn_some_garbage};
 pub use light::LightPlugin;
-pub use map::{spawn_game_starters, MapPlugin};
+pub use map::{MapPlugin, spawn_game_starters};
 pub use particles::{ParticleConfig, ParticlesPlugin};
-pub use player::{reset_players, Player, PlayerPlugin};
+pub use player::{Player, PlayerPlugin, reset_players};
 #[cfg(not(feature = "debug"))]
 pub use splash::SplashScreenPlugin;
 
 pub mod utils {
-    use bevy::render::{
-        render_asset::RenderAssetUsages,
-        render_resource::{Extent3d, TextureDimension, TextureFormat},
-        texture::Image,
+    use bevy::{
+        asset::RenderAssetUsages,
+        image::Image,
+        render::render_resource::{Extent3d, TextureDimension, TextureFormat},
     };
 
     // Creates a colorful test pattern

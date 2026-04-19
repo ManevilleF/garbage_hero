@@ -1,7 +1,7 @@
 [package]
 name = "garbage_project"
-version = "0.1.0"
-edition = "2021"
+version = "0.2.0"
+edition = "2024"
 
 [features]
 default = []
@@ -18,75 +18,49 @@ debug_world = ["debug"]
 # Enum iter
 strum = { version = "0.26", features = ["derive"] }
 # Input map
-leafwing-input-manager = "0.14"
+leafwing-input-manager = "0.20"
+bevy_enhanced_input = "0.24"
 # PRNG
-rand = "0.8"
+rand = "0.9"
 # errors
-thiserror = "1.0"
+thiserror = "2.0"
 
 # Physics
 [dependencies.avian3d]
-version = "0.1"
+version = "0.6"
 default-features = false
 features = ["3d", "f32", "parry-f32", "parallel", "simd"]
 
 [dependencies.bevy_mod_outline]
-version = "0.8"
+version = "0.12"
 default-features = false
+features = ["scene"]
 
 # particles
 [dependencies.bevy_hanabi]
-# version = "0.13"
-git = "ssh://git@github.com/djeedai/bevy_hanabi.git"
+version = "0.18"
 default-features = false
 features = ["3d"]
 
 [dependencies.bevy]
-version = "0.14"
+version = "0.18"
 default-features = false
 features = [
-    "animation",
-    "bevy_asset",
-    "bevy_state",
-    # "bevy_audio",
-    "bevy_color",
-    "bevy_gilrs",
-    "bevy_scene",
-    "bevy_winit",
-    "bevy_core_pipeline",
-    "bevy_pbr",
-    # "bevy_picking",
-    "bevy_gltf",
-    "bevy_render",
-    # "bevy_sprite",
-    "bevy_text",
-    "bevy_ui",
-    "multi_threaded",
-    "png",
-    "jpeg",
-    # "hdr",
-    # "vorbis",
-    "x11",
-    "bevy_gizmos",
-    # "android_shared_stdcxx",
-    "tonemapping_luts",
-    "smaa_luts",
-    "default_font",
-    "webgpu",
-    "sysinfo_plugin",
+    "3d",
+    "ui"
 ]
 
 [dependencies.bevy-inspector-egui]
-version = "0.25"
+version = "0.36"
 features = ["highlight_changes"]
 optional = true
 
 [dependencies.bevy_egui]
-version = "0.28"
+version = "0.39"
 optional = true
 
 [target.wasm32-unknown-unknown.dependencies]
-wasm-bindgen = "=0.2.92"
+wasm-bindgen = "=0.2.118"
 
 # Enable max optimizations for dependencies, but not for our code:
 [profile.dev.package."*"]

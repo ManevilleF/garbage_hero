@@ -1,17 +1,17 @@
-use avian3d::prelude::{ExternalImpulse, LinearVelocity};
-use bevy::{log, prelude::*, utils::HashMap};
+use avian3d::prelude::{Forces, ReadRigidBodyForces, WriteRigidBodyForces};
+use bevy::{log, platform::collections::HashMap, prelude::*};
 use leafwing_input_manager::action_state::ActionState;
 use strum::{Display, EnumIter, IntoEnumIterator};
 
 use crate::{
+    Dead, GameState,
     plugins::{
         camera::CameraParams,
         garbage::{Collector, CollectorConfig, DistributionShape},
     },
-    Dead, GameState,
 };
 
-use super::{input::PlayerInput, GameController, Player};
+use super::{GameController, Player, input::PlayerInput};
 
 pub struct PlayerSkillsPlugin;
 
@@ -29,12 +29,7 @@ impl Plugin for PlayerSkillsPlugin {
                     .run_if(in_state(GameState::Running)),
             );
         #[cfg(feature = "debug")]
-        app.add_systems(
-            PostUpdate,
-            draw_gizmos
-                .after(avian3d::prelude::PhysicsSet::Sync)
-                .before(TransformSystem::TransformPropagate),
-        );
+        app.add_systems(PostUpdate, draw_gizmos.before(TransformSystems::Propagate));
     }
 }
 
@@ -146,7 +141,7 @@ fn update_aim(
                     continue;
                 };
                 let target = ray.origin + ray.direction * dist;
-                gizmos.sphere(target, Quat::default(), 0.1, Color::BLACK);
+                gizmos.sphere(Isometry3d::from_translation(target), 0.1, Color::BLACK);
                 let Ok(direction) = Dir2::new(target.xz() - player_pos.xz()) else {
                     log::error!(
                         "Failed to normalize direction between camera ray and player {}",
@@ -158,12 +153,7 @@ fn update_aim(
                 dir.set_if_neq(direction);
             }
             GameController::Gamepad { .. } => {
-                let Some(dir) = action_state
-                    .clamped_axis_pair(&PlayerInput::Aim)
-                    .map(Vec2::from)
-                else {
-                    continue;
-                };
+                let dir = action_state.clamped_axis_pair(&PlayerInput::Aim);
                 let direction = Dir2::new(dir * Vec2::new(1.0, -1.0)).unwrap_or(Dir2::Y);
                 let mut dir = aim.map_unchanged(|aim| &mut aim.dir);
                 dir.set_if_neq(direction);
@@ -181,7 +171,7 @@ fn update_skills(
         Has<Dead>,
     )>,
 ) {
-    let dt = time.delta_seconds();
+    let dt = time.delta_secs();
     for (mut state, mut active, input, dead) in &mut players {
         state
             .cooldowns
@@ -243,7 +233,7 @@ fn throw_skill(
         }
         for collector in collectors.iter_many(children) {
             if let Some(command) = collector.throw_collected(aim.direction2(), 70.0) {
-                commands.add(command);
+                commands.queue(command);
             } else {
                 log::info!("Player {}, Nothing to shoot", player.id);
             }
@@ -251,31 +241,27 @@ fn throw_skill(
     }
 }
 
-fn dash_skill(
-    mut commands: Commands,
-    players: Query<(Entity, &PlayerAim, &ActiveSkill, &LinearVelocity), Changed<ActiveSkill>>,
-) {
+fn dash_skill(mut players: Query<(&PlayerAim, &ActiveSkill, Forces), Changed<ActiveSkill>>) {
     const DASH_SPEED: f32 = 500.0;
 
-    for (entity, aim, skill, linvel) in &players {
+    for (aim, skill, mut forces) in &mut players {
         if skill.active != Some(PlayerSkill::Dash) {
             continue;
         }
+        let linvel = forces.linear_velocity();
         let direction = (linvel.length_squared() > 1.0)
             .then(|| Vec3::new(linvel.x, 0.0, linvel.z).normalize())
             .unwrap_or(*aim.direction3());
-        commands
-            .entity(entity)
-            .insert(ExternalImpulse::new(direction * DASH_SPEED));
+        forces.apply_linear_impulse(direction * DASH_SPEED);
     }
 }
 
 fn apply_aim(time: Res<Time>, mut players: Query<(&mut Transform, &PlayerAim)>) {
-    let dt = time.delta_seconds();
+    let dt = time.delta_secs();
     for (mut tr, aim) in &mut players {
         let current = tr.forward().xz();
         let target: Vec2 = *aim.direction2();
-        let target_angle = target.angle_between(current);
+        let target_angle = target.angle_to(current);
         let max_step = aim.max_rotation_speed * dt;
         let angle = target_angle.clamp(-max_step, max_step);
         tr.rotate_axis(Dir3::Y, angle);

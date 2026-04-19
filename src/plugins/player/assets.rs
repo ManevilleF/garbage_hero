@@ -2,14 +2,14 @@ use std::f32::consts::PI;
 
 use crate::Dead;
 
-use super::{skills::PlayerAim, Player, MAX_PLAYERS};
+use super::{MAX_PLAYERS, Player, skills::PlayerAim};
 use avian3d::prelude::LinearVelocity;
 use bevy::{
     animation::RepeatAnimation,
-    pbr::{NotShadowCaster, NotShadowReceiver},
+    light::{NotShadowCaster, NotShadowReceiver},
     prelude::*,
 };
-use bevy_mod_outline::{AsyncSceneInheritOutline, OutlineBundle, OutlineVolume};
+use bevy_mod_outline::{AsyncSceneInheritOutline, OutlineVolume};
 
 pub struct PlayerVisualsPlugin;
 
@@ -23,41 +23,34 @@ impl Plugin for PlayerVisualsPlugin {
             .add_systems(Update, (setup_animations, player_animations))
             .add_systems(
                 PostUpdate,
-                update_marker
-                    .after(avian3d::prelude::PhysicsSet::Sync)
-                    .before(TransformSystem::TransformPropagate),
+                update_marker.before(TransformSystems::Propagate),
             );
     }
 }
 
 #[derive(Bundle)]
 pub struct PlayerVisualsBundle {
-    pub scene: SceneBundle,
-    pub outline: OutlineBundle,
+    pub scene: SceneRoot,
+    pub transform: Transform,
+    pub outline: OutlineVolume,
     pub async_outline: AsyncSceneInheritOutline,
 }
 
 impl PlayerVisualsBundle {
     pub fn new(id: usize, assets: &PlayerAssets) -> Self {
         Self {
-            scene: SceneBundle {
-                scene: assets.scenes[id].clone_weak(),
-                transform: Transform {
-                    translation: Vec3::new(0.0, -1.5, 0.0),
-                    scale: Vec3::splat(3.0),
-                    rotation: Quat::from_rotation_y(PI),
-                },
-                ..default()
+            scene: SceneRoot(assets.scenes[id].clone()),
+            transform: Transform {
+                translation: Vec3::new(0.0, -1.5, 0.0),
+                scale: Vec3::splat(3.0),
+                rotation: Quat::from_rotation_y(PI),
             },
-            outline: OutlineBundle {
-                outline: OutlineVolume {
-                    visible: false,
-                    width: 3.0,
-                    colour: assets.colors[id],
-                },
-                ..default()
+            outline: OutlineVolume {
+                visible: false,
+                width: 3.0,
+                colour: assets.colors[id],
             },
-            async_outline: AsyncSceneInheritOutline,
+            async_outline: AsyncSceneInheritOutline::default(),
         }
     }
 }
@@ -69,7 +62,7 @@ fn setup_animations(
     mut commands: Commands,
     assets: Res<PlayerAssets>,
     players: Query<(Entity, &Player)>,
-    ancestors: Query<&Parent>,
+    ancestors: Query<&ChildOf>,
     animations: Query<Entity, Added<AnimationPlayer>>,
 ) {
     for entity in &animations {
@@ -78,7 +71,7 @@ fn setup_animations(
             continue;
         };
         commands.entity(entity).insert((
-            assets.animation_graphs[player.id as usize].clone_weak(),
+            assets.animation_graphs[player.id as usize].clone(),
             assets.animations[player.id as usize].clone(),
             RootPlayer(root),
         ));
@@ -115,7 +108,9 @@ pub struct PlayerAimMarker(Entity);
 
 #[derive(Bundle)]
 pub struct PlayerAimMarkerBundle {
-    pub pbr: PbrBundle,
+    pub transform: Transform,
+    pub mesh: Mesh3d,
+    pub material: MeshMaterial3d<StandardMaterial>,
     pub marker: PlayerAimMarker,
     pub name: Name,
     pub no_shadow_caster: NotShadowCaster,
@@ -125,12 +120,9 @@ pub struct PlayerAimMarkerBundle {
 impl PlayerAimMarkerBundle {
     pub fn new(id: usize, player_entity: Entity, assets: &PlayerAssets) -> Self {
         Self {
-            pbr: PbrBundle {
-                transform: Transform::from_xyz(0.0, 0.55, 0.0),
-                mesh: assets.marker_mesh.clone_weak(),
-                material: assets.marker_mats[id].clone_weak(),
-                ..default()
-            },
+            transform: Transform::from_xyz(0.0, 0.55, 0.0),
+            mesh: assets.marker_mesh.clone(),
+            material: assets.marker_mats[id].clone(),
             marker: PlayerAimMarker(player_entity),
             name: Name::new(format!("Player {id} aim marker")),
             no_shadow_caster: NotShadowCaster,
@@ -166,10 +158,10 @@ pub struct CharacterAnimations {
 pub struct PlayerAssets {
     pub colors: [Color; MAX_PLAYERS as usize],
     pub scenes: [Handle<Scene>; MAX_PLAYERS as usize],
-    pub animation_graphs: [Handle<AnimationGraph>; MAX_PLAYERS as usize],
+    pub animation_graphs: [AnimationGraphHandle; MAX_PLAYERS as usize],
     pub animations: [CharacterAnimations; MAX_PLAYERS as usize],
-    pub marker_mats: [Handle<StandardMaterial>; MAX_PLAYERS as usize],
-    pub marker_mesh: Handle<Mesh>,
+    pub marker_mats: [MeshMaterial3d<StandardMaterial>; MAX_PLAYERS as usize],
+    pub marker_mesh: Mesh3d,
 }
 
 impl FromWorld for PlayerAssets {
@@ -188,19 +180,23 @@ impl FromWorld for PlayerAssets {
         ];
         let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
         let marker_mats = colors.map(|c| {
-            materials.add(StandardMaterial {
-                base_color: c,
-                unlit: true,
-                fog_enabled: false,
-                ..default()
-            })
+            materials
+                .add(StandardMaterial {
+                    base_color: c,
+                    unlit: true,
+                    fog_enabled: false,
+                    ..default()
+                })
+                .into()
         });
         let mut meshes = world.resource_mut::<Assets<Mesh>>();
-        let marker_mesh = meshes.add(Triangle3d::new(
-            Vec3::new(0.0, 0.0, -3.0),
-            Vec3::new(-0.5, 0.0, -2.0),
-            Vec3::new(0.5, 0.0, -2.0),
-        ));
+        let marker_mesh = meshes
+            .add(Triangle3d::new(
+                Vec3::new(0.0, 0.0, -3.0),
+                Vec3::new(-0.5, 0.0, -2.0),
+                Vec3::new(0.5, 0.0, -2.0),
+            ))
+            .into();
         let server = world.resource::<AssetServer>();
         let characters = [
             "kenney_mini-characters/Models/glb/character-male-e.glb",
@@ -243,7 +239,7 @@ impl FromWorld for PlayerAssets {
             }
         });
         let mut graphs = world.resource_mut::<Assets<AnimationGraph>>();
-        let animation_graphs = animation_graphs.map(|graph| graphs.add(graph));
+        let animation_graphs = animation_graphs.map(|graph| graphs.add(graph).into());
         Self {
             colors,
             scenes,

@@ -22,8 +22,7 @@ impl Plugin for ParticlesPlugin {
         // app.add_systems(
         //     PostUpdate,
         //     draw_gizmos
-        //         .after(avian3d::prelude::PhysicsSet::Sync)
-        //         .before(TransformSystem::TransformPropagate),
+        //         .before(TransformSystems::Propagate),
         // );
     }
 }
@@ -94,10 +93,10 @@ impl ParticleConfig {
     }
 
     fn collector_effect() -> EffectAsset {
-        let mut size_gradient = Gradient::new();
-        size_gradient.add_key(0.0, Vec2::new(0.0, 0.0));
-        size_gradient.add_key(0.3, Vec2::new(1.0, 0.05));
-        size_gradient.add_key(1.0, Vec2::splat(0.0));
+        let mut size_gradient = bevy_hanabi::Gradient::new();
+        size_gradient.add_key(0.0, Vec3::new(0.0, 0.0, 1.0));
+        size_gradient.add_key(0.3, Vec3::new(1.0, 0.05, 1.0));
+        size_gradient.add_key(1.0, Vec3::splat(0.0));
 
         let writer = ExprWriter::new();
 
@@ -141,7 +140,7 @@ impl ParticleConfig {
         let drag = writer.lit(1.).expr();
         let update_drag = LinearDragModifier::new(drag);
 
-        EffectAsset::new(vec![16384], Spawner::rate(100.0.into()), writer.finish())
+        EffectAsset::new(16384, SpawnerSettings::rate(100.0.into()), writer.finish())
             .with_name("Collector")
             .init(init_color)
             .init(init_pos)
@@ -160,11 +159,11 @@ impl ParticleConfig {
 
     fn destruction_effect() -> EffectAsset {
         // Set `spawn_immediately` to false to spawn on command with Spawner::reset()
-        let spawner = Spawner::once(100.0.into(), false);
-        let mut size_gradient = Gradient::new();
-        size_gradient.add_key(0.0, Vec2::splat(0.05)); // Start size
-        size_gradient.add_key(0.1, Vec2::splat(0.8)); // Start size
-        size_gradient.add_key(1.0, Vec2::splat(0.0)); // End size
+        let spawner = SpawnerSettings::once(100.0.into());
+        let mut size_gradient = bevy_hanabi::Gradient::new();
+        size_gradient.add_key(0.0, Vec3::splat(0.05)); // Start size
+        size_gradient.add_key(0.1, Vec3::splat(0.8)); // Start size
+        size_gradient.add_key(1.0, Vec3::splat(0.0)); // End size
 
         let writer = ExprWriter::new();
         // Bind the initial particle color to the value of the 'spawn_color' property
@@ -204,9 +203,9 @@ impl ParticleConfig {
         };
 
         let mut module = writer.finish();
-        module.add_texture("texture");
+        module.add_texture_slot("texture");
 
-        EffectAsset::new(vec![32768], spawner, module)
+        EffectAsset::new(32768, spawner, module)
             .with_name("Object Destruction")
             .init(init_color)
             .init(init_pos)
@@ -233,7 +232,7 @@ impl FromWorld for ParticleConfig {
         let destruction_handle = assets.add(Self::destruction_effect());
         let destruction_emitter = world
             .spawn((
-                ParticleEffectBundle::new(destruction_handle),
+                ParticleEffect::new(destruction_handle),
                 EffectMaterial {
                     images: vec![texture],
                 },

@@ -1,17 +1,17 @@
 use avian3d::prelude::*;
 use bevy::prelude::*;
-use bevy_mod_outline::{OutlineBundle, OutlineVolume};
+use bevy_mod_outline::OutlineVolume;
 
 use crate::{
+    Damage, GameState, Health, ObjectLayer, ParticleConfig,
     plugins::{
         garbage::{CollectorBundle, CollectorConfig, CollectorParticlesBundle, GarbageBody},
         particles::DeathEffect,
     },
-    Damage, GameState, Health, ObjectLayer, ParticleConfig,
 };
 
 use super::{
-    assets::EnemyAssets, Enemy, PlayerDetectorBundle, SpawnWorm, TargetPlayer, ENEMY_COLOR,
+    ENEMY_COLOR, Enemy, PlayerDetectorBundle, SpawnWorm, TargetPlayer, assets::EnemyAssets,
 };
 
 const PLUNGE_HEIGHT: f32 = 25.0;
@@ -37,7 +37,10 @@ impl Plugin for WormPlugin {
 
 #[derive(Bundle)]
 pub struct WormBundle {
-    pub pbr: PbrBundle,
+    pub transform: Transform,
+    pub material: MeshMaterial3d<StandardMaterial>,
+    pub mesh: Mesh3d,
+    pub visibility: Visibility,
     pub enemy: Enemy,
     pub movement: WormMovement,
     pub state: WormState,
@@ -49,18 +52,16 @@ pub struct WormBundle {
     pub damage: Damage,
     pub name: Name,
     pub death: DeathEffect,
-    pub outline: OutlineBundle,
+    pub outline: OutlineVolume,
 }
 
 impl WormBundle {
     pub fn new(pos: Vec3, assets: &EnemyAssets, size: usize) -> Self {
         Self {
-            pbr: PbrBundle {
-                material: assets.materials[0].clone_weak(),
-                mesh: assets.mesh.clone_weak(),
-                transform: Transform::from_translation(pos),
-                ..default()
-            },
+            material: assets.materials[0].clone(),
+            mesh: assets.mesh.clone(),
+            transform: Transform::from_translation(pos),
+            visibility: Visibility::Inherited,
             enemy: Enemy,
             movement: WormMovement::new((size as f32 * 1.5).max(10.0), pos),
             rigidbody: RigidBody::Kinematic,
@@ -75,13 +76,10 @@ impl WormBundle {
                 color: Color::BLACK,
                 radius: 1.0,
             },
-            outline: OutlineBundle {
-                outline: OutlineVolume {
-                    visible: false,
-                    width: 3.0,
-                    colour: Color::WHITE,
-                },
-                ..default()
+            outline: OutlineVolume {
+                visible: false,
+                width: 3.0,
+                colour: Color::WHITE,
             },
         }
     }
@@ -122,7 +120,7 @@ fn behave(
     mut enemies: Query<(&mut Transform, &mut WormMovement, &mut WormState)>,
     time: Res<Time>,
 ) {
-    let dt = time.delta_seconds();
+    let dt = time.delta_secs();
     for (mut transform, mut movement, mut state) in &mut enemies {
         let position = transform.translation;
         let speed = movement.speed;
@@ -207,7 +205,7 @@ fn handle_state_change(
 }
 
 fn spawn_worm(
-    mut events: EventReader<SpawnWorm>,
+    mut events: MessageReader<SpawnWorm>,
     mut commands: Commands,
     assets: Res<EnemyAssets>,
     particles: Res<ParticleConfig>,
@@ -227,12 +225,10 @@ fn spawn_worm(
             .spawn((
                 collector_bundle,
                 GarbageBody::new(event.size, Vec3::ZERO, 2.5, -1.0),
+                ChildOf(enemy),
             ))
-            .set_parent(enemy)
             .id();
-        commands
-            .spawn(PlayerDetectorBundle::cone(3.0))
-            .set_parent(enemy);
+        commands.spawn((PlayerDetectorBundle::cone(3.0), ChildOf(enemy)));
         commands.spawn(CollectorParticlesBundle::new(
             collector,
             ENEMY_COLOR,
