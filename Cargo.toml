@@ -10,6 +10,7 @@ debug = [
     "bevy_egui",
     "bevy-inspector-egui",
     "bevy/dev",
+    "bevy/debug"
 ]
 debug_world = ["debug"]
 
@@ -47,7 +48,6 @@ features = [
     "3d",
     "ui",
     "jpeg",
-    "debug"
 ]
 
 [dependencies.bevy-inspector-egui]

@@ -1,6 +1,6 @@
 use bevy::{dev_tools::fps_overlay::FpsOverlayConfig, prelude::*};
 use bevy_egui::{
-    EguiContexts,
+    EguiContexts, EguiPrimaryContextPass,
     egui::{self, Widget},
 };
 use strum::IntoEnumIterator;
@@ -25,15 +25,16 @@ impl Plugin for DebugPlugin {
             bevy_inspector_egui::DefaultInspectorConfigPlugin,
             bevy::dev_tools::fps_overlay::FpsOverlayPlugin::default(),
         ))
-        .add_systems(Update, (commands_ui, players_ui, debug_ui));
+        .add_systems(EguiPrimaryContextPass, (commands_ui, players_ui, debug_ui));
     }
 }
 
-fn debug_ui(mut context: EguiContexts, mut ui_opts: ResMut<FpsOverlayConfig>) {
-    let ctx = context.ctx_mut().unwrap();
+fn debug_ui(mut context: EguiContexts, mut ui_opts: ResMut<FpsOverlayConfig>) -> Result {
+    let ctx = context.ctx_mut()?;
     egui::Window::new("Debug").show(ctx, |ui| {
         ui.checkbox(&mut ui_opts.enabled, "FPS Overlay");
     });
+    Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -48,11 +49,11 @@ fn commands_ui(
     mut start_game: Local<StartGame>,
     mut worm_evw: MessageWriter<SpawnWorm>,
     mut turret_evw: MessageWriter<SpawnTurret>,
-) {
+) -> Result {
     if *worm_size == 0 {
         *worm_size = 5;
     }
-    let ctx = context.ctx_mut().unwrap();
+    let ctx = context.ctx_mut()?;
     egui::Window::new("Commands").show(ctx, |ui| {
         if ui.button("Clear Map").clicked() {
             commands.queue(clear_all());
@@ -126,14 +127,15 @@ fn commands_ui(
             turret_evw.write(SpawnTurret { position: *pos });
         }
     });
+    Ok(())
 }
 
 fn players_ui(
     // mut player_connected_evw: MessageWriter<PlayerConnected>,
     mut context: EguiContexts,
     mut players: Query<(&Player, &ActiveSkill, &SkillState, &mut Health)>,
-) {
-    let ctx = context.ctx_mut().unwrap();
+) -> Result {
+    let ctx = context.ctx_mut()?;
     let mut player_count = 0_usize;
     egui::Window::new("Players").show(ctx, |ui| {
         egui::ScrollArea::vertical().show(ui, |ui| {
@@ -181,4 +183,5 @@ fn players_ui(
         //     }));
         // }
     });
+    Ok(())
 }

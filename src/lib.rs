@@ -3,9 +3,7 @@
 use std::time::Duration;
 
 use avian3d::prelude::*;
-use bevy::{
-    anti_alias::taa::TemporalAntiAliasPlugin, prelude::*, time::common_conditions::on_timer,
-};
+use bevy::{prelude::*, time::common_conditions::on_timer};
 use bevy_mod_outline::{AutoGenerateOutlineNormalsPlugin, OutlinePlugin};
 
 mod plugins;
