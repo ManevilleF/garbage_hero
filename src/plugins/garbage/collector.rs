@@ -82,6 +82,7 @@ pub struct CollectorBundle {
     pub transform: Transform,
     pub collector: Collector,
     pub config: CollectorConfig,
+    pub colliding_entities: CollidingEntities,
     pub collider: Collider,
     pub sensor: Sensor,
     pub layer: CollisionLayers,
@@ -101,6 +102,7 @@ impl CollectorBundle {
         Self {
             transform: Transform::default(),
             collider: Collider::sphere(1.0),
+            colliding_entities: Default::default(),
             sensor: Sensor,
             collector: Collector::fixed(collector_radius, max_distance, max_items, max_points),
             layer: CollisionLayers::new(ObjectLayer::Collector, [ObjectLayer::Collectible]),
@@ -125,6 +127,7 @@ impl CollectorBundle {
         Self {
             transform: Transform::default(),
             collider: Collider::sphere(1.0),
+            colliding_entities: Default::default(),
             sensor: Sensor,
             collector: Collector::growing(min_radius, max_distance, max_items),
             layer: CollisionLayers::new(ObjectLayer::Collector, [ObjectLayer::Collectible]),

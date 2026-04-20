@@ -5,7 +5,10 @@ use bevy_egui::{
 };
 use strum::IntoEnumIterator;
 
-use crate::{Health, StartGame, clear_all};
+use crate::{
+    Health, StartGame, clear_all,
+    plugins::player::{GameController, GamepadCategory, PlayerConnected},
+};
 
 use super::{
     enemies::{SpawnTurret, SpawnWorm},
@@ -131,7 +134,8 @@ fn commands_ui(
 }
 
 fn players_ui(
-    // mut player_connected_evw: MessageWriter<PlayerConnected>,
+    mut commands: Commands,
+    mut player_connected_evw: MessageWriter<PlayerConnected>,
     mut context: EguiContexts,
     mut players: Query<(&Player, &ActiveSkill, &SkillState, &mut Health)>,
 ) -> Result {
@@ -168,20 +172,15 @@ fn players_ui(
             }
         });
         ui.spacing();
-        // if ui.button("Spawn fake player").clicked() {
-        //     player_connected_evw.send(PlayerConnected(Player {
-        //         id: player_count as u8,
-        //         controller: GameController::Gamepad {
-        //             category: GamepadCategory::Unknown,
-        //             gamepad: Gamepad {
-        //                 vendor_id: Some(u16::MAX),
-        //                 product_id: Some(player_count as u16),
-        //                 digital: ButtonInput::default(),
-        //                 analog: Axis::default(),
-        //             },
-        //         },
-        //     }));
-        // }
+        if ui.button("Spawn fake player").clicked() {
+            player_connected_evw.write(PlayerConnected(Player {
+                id: player_count as u8,
+                controller: GameController::Gamepad {
+                    category: GamepadCategory::Unknown,
+                    gamepad: commands.spawn(()).id(),
+                },
+            }));
+        }
     });
     Ok(())
 }

@@ -23,6 +23,7 @@ pub enum GameState {
 #[derive(PhysicsLayer, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum ObjectLayer {
     #[default]
+    None,
     Map,
     Player,
     Enemy,
