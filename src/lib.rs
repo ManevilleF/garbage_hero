@@ -57,7 +57,7 @@ pub fn run() -> AppExit {
         PhysicsPlugins::default().with_collision_hooks::<ThrownItemHooks>(),
         OutlinePlugin,
         AutoGenerateOutlineNormalsPlugin::default(),
-        TemporalAntiAliasPlugin,
+        // TemporalAntiAliasPlugin,
     ))
     // Physics config
     .insert_resource(SubstepCount(3))
@@ -86,7 +86,7 @@ pub fn run() -> AppExit {
     #[cfg(feature = "debug_world")]
     app.add_plugins(bevy_inspector_egui::quick::WorldInspectorPlugin::default());
     #[cfg(feature = "debug_physics")]
-    app.add_plugins(avian3d::debug_render::PhysicsDebugPlugin::default());
+    app.add_plugins(avian3d::debug_render::PhysicsDebugPlugin);
     app.run()
 }
 

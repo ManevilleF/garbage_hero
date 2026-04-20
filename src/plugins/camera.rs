@@ -64,6 +64,7 @@ pub fn spawn_camera(mut commands: Commands) {
             quality_level: ScreenSpaceAmbientOcclusionQualityLevel::Medium,
             ..default()
         },
+        Msaa::Off,
         Name::new("Game Camera"),
         GameCamera,
         IsDefaultUiCamera,

@@ -254,6 +254,6 @@ pub fn draw_gizmos(mut gizmos: Gizmos, effects: Query<(&GlobalTransform, &Effect
             .get_stored("color")
             .map(ParticleConfig::color_from_value)
             .unwrap_or(Color::BLACK);
-        gizmos.sphere(gtr.translation(), Quat::IDENTITY, 1.0, color);
+        gizmos.sphere(Isometry3d::from_translation(gtr.translation()), 1.0, color);
     }
 }

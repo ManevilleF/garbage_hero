@@ -221,17 +221,17 @@ impl Collector {
     }
 
     #[inline]
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.collected.len()
     }
 
     #[inline]
-    pub fn points_len(&self) -> usize {
+    pub const fn points_len(&self) -> usize {
         self.distribution.len()
     }
 
     #[inline]
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.collected.is_empty()
     }
 
@@ -299,7 +299,7 @@ impl Collector {
     }
 }
 
-struct ThrowCollectedCmd {
+pub struct ThrowCollectedCmd {
     entity: Entity,
     direction: Vec3,
     force: f32,
@@ -430,8 +430,14 @@ fn draw_gizmos(
     let color = Color::Srgba(DARK_GRAY);
 
     for (gt, collector, body) in &collectors {
+        use std::f32::consts::FRAC_PI_2;
+
         let translation = gt.translation();
-        gizmos.circle(translation, Dir3::Y, collector.radius(), color);
+        gizmos.circle(
+            Isometry3d::new(translation, Quat::from_rotation_z(FRAC_PI_2)),
+            collector.radius(),
+            color,
+        );
         let positions = match body {
             Some(b) => b.compute_3d_positions(collector.len(), &collector.distribution),
             None => collector
@@ -442,7 +448,7 @@ fn draw_gizmos(
                 .collect(),
         };
         for pos in positions {
-            gizmos.sphere(pos, Quat::IDENTITY, 0.2, color);
+            gizmos.sphere(Isometry3d::from_translation(pos), 0.2, color);
         }
     }
 }

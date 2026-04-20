@@ -40,7 +40,7 @@ impl Health {
     }
 
     /// Returns `true` if health is still over 0
-    pub fn damage(&mut self, amount: u16) -> bool {
+    pub const fn damage(&mut self, amount: u16) -> bool {
         self.current = self.current.saturating_sub(amount);
         self.current > 0
     }
@@ -59,7 +59,7 @@ impl Health {
         self.current as f32 / self.max as f32
     }
 
-    pub fn reset(&mut self) {
+    pub const fn reset(&mut self) {
         self.current = self.max;
     }
 }
@@ -175,25 +175,21 @@ fn direct_damage(
         else {
             continue;
         };
-        if !invicible_b {
-            if let Some((damage, mut health)) = damage_a.zip(health_b) {
-                health.damage(damage.0);
-                commands.entity(*collider1).insert(if is_player_b {
-                    Invincible::player()
-                } else {
-                    Invincible::default()
-                });
-            }
+        if !invicible_b && let Some((damage, mut health)) = damage_a.zip(health_b) {
+            health.damage(damage.0);
+            commands.entity(*collider1).insert(if is_player_b {
+                Invincible::player()
+            } else {
+                Invincible::default()
+            });
         }
-        if !invicible_a {
-            if let Some((damage, mut health)) = damage_b.zip(health_a) {
-                health.damage(damage.0);
-                commands.entity(*collider2).insert(if is_player_a {
-                    Invincible::player()
-                } else {
-                    Invincible::default()
-                });
-            }
+        if !invicible_a && let Some((damage, mut health)) = damage_b.zip(health_a) {
+            health.damage(damage.0);
+            commands.entity(*collider2).insert(if is_player_a {
+                Invincible::player()
+            } else {
+                Invincible::default()
+            });
         }
     }
 }

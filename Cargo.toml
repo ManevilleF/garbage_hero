@@ -9,8 +9,7 @@ debug_physics = ["avian3d/debug-plugin"]
 debug = [
     "bevy_egui",
     "bevy-inspector-egui",
-    "bevy/file_watcher",
-    "bevy/bevy_dev_tools",
+    "bevy/dev",
 ]
 debug_world = ["debug"]
 
@@ -19,7 +18,6 @@ debug_world = ["debug"]
 strum = { version = "0.26", features = ["derive"] }
 # Input map
 leafwing-input-manager = "0.20"
-bevy_enhanced_input = "0.24"
 # PRNG
 rand = "0.9"
 # errors
@@ -47,7 +45,9 @@ version = "0.18"
 default-features = false
 features = [
     "3d",
-    "ui"
+    "ui",
+    "jpeg",
+    "debug"
 ]
 
 [dependencies.bevy-inspector-egui]

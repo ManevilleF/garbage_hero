@@ -12,7 +12,7 @@ mod movement;
 mod skills;
 mod ui;
 
-pub use input::{GameController, GamepadCategory, PlayerInput};
+pub use input::{Binding, GameController, GamepadCategory, PlayerInput, PlayerInputs};
 #[cfg(feature = "debug")]
 pub use skills::{ActiveSkill, SkillState};
 

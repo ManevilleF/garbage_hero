@@ -64,7 +64,7 @@ impl Display for GameController {
             "{}",
             match self {
                 Self::KeyBoard => String::from("Keyboard"),
-                Self::Gamepad { gamepad, category } => format!("{category} Gamepad {}", gamepad.id),
+                Self::Gamepad { gamepad, category } => format!("{category} Gamepad {:?}", gamepad),
             }
         )
     }
@@ -72,17 +72,20 @@ impl Display for GameController {
 #[derive(Bundle)]
 pub struct PlayerInputBundle {
     pub controller: GameController,
-    pub input: InputManagerBundle<PlayerInput>,
+    pub inputs: PlayerInputs,
+    pub map: InputMap<PlayerInput>,
     pub icons: InputMapIcons,
 }
 
 impl PlayerInputBundle {
     pub fn new(controller: GameController, server: &AssetServer) -> Self {
-        let map = PlayerInput::input_map(controller);
-        let icons = InputMapIcons::new(&map, &controller, server);
+        let inputs = PlayerInputs::new(controller);
+        let map = PlayerInput::input_map(controller, &inputs);
+        let icons = InputMapIcons::new(&inputs, &controller, server);
         Self {
             controller,
-            input: InputManagerBundle::with_map(map),
+            inputs,
+            map,
             icons,
         }
     }
@@ -91,10 +94,74 @@ impl PlayerInputBundle {
 #[derive(Debug, Clone, Copy, Actionlike, PartialEq, Eq, Reflect, Hash)]
 #[non_exhaustive]
 pub enum PlayerInput {
+    #[actionlike(DualAxis)]
     Move,
+    #[actionlike(DualAxis)]
     Aim,
     Pause,
     Skill(PlayerSkill),
+}
+
+#[derive(Debug, Clone, Component)]
+pub struct PlayerInputs(pub(crate) HashMap<PlayerInput, Binding>);
+
+#[derive(Debug, Clone)]
+pub enum Binding {
+    KeyCode(KeyCode),
+    Keys(Vec<KeyCode>),
+    GamepadButton(GamepadButton),
+    MouseMove,
+    MouseButton(MouseButton),
+    LeftSick,
+    RightStick,
+    Dpad,
+    Wasd,
+    ArrowKeys,
+}
+
+impl PlayerInputs {
+    pub fn new(controller: GameController) -> Self {
+        let mut map = HashMap::new();
+        use PlayerInput::*;
+        use PlayerSkill::*;
+
+        match controller {
+            GameController::Gamepad { .. } => {
+                map.extend([
+                    (Move, Binding::LeftSick),
+                    (Move, Binding::Dpad),
+                    (Aim, Binding::RightStick),
+                    (Skill(Collect), Binding::GamepadButton(GamepadButton::South)),
+                    (
+                        Skill(Shoot),
+                        Binding::GamepadButton(GamepadButton::RightTrigger2),
+                    ),
+                    (
+                        Skill(Defend),
+                        Binding::GamepadButton(GamepadButton::LeftTrigger2),
+                    ),
+                    (Skill(Dash), Binding::GamepadButton(GamepadButton::East)),
+                    (Pause, Binding::GamepadButton(GamepadButton::Start)),
+                ]);
+            }
+            GameController::KeyBoard => {
+                map.extend([
+                    (Move, Binding::ArrowKeys),
+                    (Move, Binding::Wasd),
+                    (Aim, Binding::MouseMove),
+                    (
+                        Skill(Collect),
+                        Binding::Keys(vec![KeyCode::ShiftLeft, KeyCode::ShiftRight]),
+                    ),
+                    (Skill(Shoot), Binding::MouseButton(MouseButton::Left)),
+                    (Skill(Defend), Binding::MouseButton(MouseButton::Right)),
+                    (Skill(Dash), Binding::KeyCode(KeyCode::Space)),
+                    (Pause, Binding::KeyCode(KeyCode::Escape)),
+                ]);
+            }
+        }
+        Self(map)
+    }
 }
 
 impl Display for PlayerInput {
@@ -113,43 +180,54 @@ impl Display for PlayerInput {
 }
 
 impl PlayerInput {
-    pub fn input_map(controller: GameController) -> InputMap<Self> {
-        use PlayerInput::*;
-        use PlayerSkill::*;
-
+    pub fn input_map(controller: GameController, inputs: &PlayerInputs) -> InputMap<Self> {
         let mut map = InputMap::default();
+        for (input, binding) in inputs.0.iter() {
+            match binding {
+                Binding::KeyCode(key) => {
+                    map.insert(*input, *key);
+                }
+                Binding::Keys(keys) => {
+                    map.insert_one_to_many(*input, keys.clone());
+                }
+                Binding::GamepadButton(button) => {
+                    map.insert(*input, *button);
+                }
+                Binding::MouseMove => {
+                    map.insert_dual_axis(*input, MouseMove::default());
+                }
+                Binding::MouseButton(button) => {
+                    map.insert(*input, *button);
+                }
+                Binding::LeftSick => {
+                    map.insert_dual_axis(*input, GamepadStick::LEFT);
+                }
+                Binding::RightStick => {
+                    map.insert_dual_axis(*input, GamepadStick::RIGHT);
+                }
+                Binding::Dpad => {
+                    map.insert_dual_axis(*input, VirtualDPad::dpad());
+                }
+                Binding::Wasd => {
+                    map.insert_dual_axis(*input, VirtualDPad::wasd());
+                }
+                Binding::ArrowKeys => {
+                    map.insert_dual_axis(*input, VirtualDPad::arrow_keys());
+                }
+            }
+        }
+
         match controller {
             GameController::Gamepad { gamepad, .. } => {
-                map.set_gamepad(gamepad)
-                    .insert(Pause, GamepadButtonType::Start)
-                    .insert(Move, DualAxis::left_stick())
-                    .insert(Move, VirtualDPad::dpad())
-                    .insert(Aim, DualAxis::right_stick())
-                    .insert(Skill(Collect), GamepadButtonType::South)
-                    .insert(Skill(Shoot), GamepadButtonType::RightTrigger2)
-                    .insert(Skill(Defend), GamepadButtonType::LeftTrigger2)
-                    .insert(Skill(Dash), GamepadButtonType::East);
+                map.set_gamepad(gamepad);
             }
-            GameController::KeyBoard => {
-                map.insert(Pause, KeyCode::Escape)
-                    .insert(Move, VirtualDPad::arrow_keys())
-                    .insert(Move, VirtualDPad::wasd())
-                    .insert(Aim, DualAxis::mouse_motion())
-                    .insert_one_to_many(Skill(Collect), [KeyCode::ShiftLeft, KeyCode::ShiftRight])
-                    .insert(Skill(Shoot), MouseButton::Left)
-                    .insert(Skill(Defend), MouseButton::Right)
-                    .insert(Skill(Dash), KeyCode::Space);
-            }
+            GameController::KeyBoard => {}
         }
         map
     }
 
     pub fn get_movement(state: &ActionState<Self>) -> Option<Vec2> {
-        if state.pressed(&Self::Move) {
-            let dir = state.clamped_axis_pair(&Self::Move).xy().try_normalize()?;
-            return Some(dir);
-        }
-        None
+        state.clamped_axis_pair(&Self::Move).xy().try_normalize()
     }
 }
 

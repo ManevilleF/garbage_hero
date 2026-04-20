@@ -249,9 +249,11 @@ fn dash_skill(mut players: Query<(&PlayerAim, &ActiveSkill, Forces), Changed<Act
             continue;
         }
         let linvel = forces.linear_velocity();
-        let direction = (linvel.length_squared() > 1.0)
-            .then(|| Vec3::new(linvel.x, 0.0, linvel.z).normalize())
-            .unwrap_or(*aim.direction3());
+        let direction = if linvel.length_squared() > 1.0 {
+            Vec3::new(linvel.x, 0.0, linvel.z).normalize()
+        } else {
+            *aim.direction3()
+        };
         forces.apply_linear_impulse(direction * DASH_SPEED);
     }
 }

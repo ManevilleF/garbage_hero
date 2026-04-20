@@ -109,9 +109,10 @@ fn tick_loading_builds(
     asset_server: Res<AssetServer>,
     assets: Res<Assets<LoadedFolder>>,
 ) {
-    if let Some(RecursiveDependencyLoadState::Loaded) =
-        asset_server.get_recursive_dependency_load_state(loading.0.id())
-    {
+    if matches!(
+        asset_server.get_recursive_dependency_load_state(loading.0.id()),
+        Some(RecursiveDependencyLoadState::Loaded)
+    ) {
         let folder: &LoadedFolder = assets.get(&loading.0).unwrap();
         builds.0.extend(folder.handles.iter().cloned().map(|h| {
             let path = h.path().unwrap().to_string();
