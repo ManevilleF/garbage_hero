@@ -12,12 +12,7 @@ impl Plugin for GarbageBodyPlugin {
             .add_systems(FixedUpdate, update_bodies);
 
         #[cfg(feature = "debug")]
-        app.add_systems(
-            PostUpdate,
-            draw_gizmos
-                .after(avian3d::prelude::PhysicsSet::Sync)
-                .before(TransformSystem::TransformPropagate),
-        );
+        app.add_systems(PostUpdate, draw_gizmos.before(TransformSystems::Propagate));
     }
 }
 
@@ -38,12 +33,12 @@ pub struct Chain {
 
 impl Chain {
     #[inline]
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.points.len()
     }
 
     #[inline]
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.points.is_empty()
     }
 

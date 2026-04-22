@@ -1,19 +1,22 @@
-use bevy::{dev_tools::ui_debug_overlay::UiDebugOptions, prelude::*};
+use bevy::{dev_tools::fps_overlay::FpsOverlayConfig, prelude::*};
 use bevy_egui::{
+    EguiContexts, EguiPrimaryContextPass,
     egui::{self, Widget},
-    EguiContexts,
 };
 use strum::IntoEnumIterator;
 
-use crate::{clear_all, Health, StartGame};
+use crate::{
+    Health, StartGame, clear_all,
+    plugins::player::{GameController, GamepadCategory, PlayerConnected},
+};
 
 use super::{
     enemies::{SpawnTurret, SpawnWorm},
     garbage::{
-        spawn_builds, spawn_some_garbage, AvailableItemBuilds, GarbageAssets, GarbageBundle,
-        GarbageItem, SpawnBuild,
+        AvailableItemBuilds, GarbageAssets, GarbageBundle, GarbageItem, SpawnBuild, spawn_builds,
+        spawn_some_garbage,
     },
-    player::{ActiveSkill, GameController, GamepadCategory, Player, PlayerConnected, SkillState},
+    player::{ActiveSkill, Player, SkillState},
 };
 
 pub struct DebugPlugin;
@@ -21,19 +24,20 @@ pub struct DebugPlugin;
 impl Plugin for DebugPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
-            bevy_egui::EguiPlugin,
+            bevy_egui::EguiPlugin::default(),
             bevy_inspector_egui::DefaultInspectorConfigPlugin,
-            bevy::dev_tools::ui_debug_overlay::DebugUiPlugin,
+            bevy::dev_tools::fps_overlay::FpsOverlayPlugin::default(),
         ))
-        .add_systems(Update, (commands_ui, players_ui, debug_ui));
+        .add_systems(EguiPrimaryContextPass, (commands_ui, players_ui, debug_ui));
     }
 }
 
-fn debug_ui(mut context: EguiContexts, mut ui_opts: ResMut<UiDebugOptions>) {
-    let ctx = context.ctx_mut();
+fn debug_ui(mut context: EguiContexts, mut ui_opts: ResMut<FpsOverlayConfig>) -> Result {
+    let ctx = context.ctx_mut()?;
     egui::Window::new("Debug").show(ctx, |ui| {
-        ui.checkbox(&mut ui_opts.enabled, "Debug Ui Overlay");
+        ui.checkbox(&mut ui_opts.enabled, "FPS Overlay");
     });
+    Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -46,16 +50,16 @@ fn commands_ui(
     mut rot: Local<f32>,
     mut worm_size: Local<usize>,
     mut start_game: Local<StartGame>,
-    mut worm_evw: EventWriter<SpawnWorm>,
-    mut turret_evw: EventWriter<SpawnTurret>,
-) {
+    mut worm_evw: MessageWriter<SpawnWorm>,
+    mut turret_evw: MessageWriter<SpawnTurret>,
+) -> Result {
     if *worm_size == 0 {
         *worm_size = 5;
     }
-    let ctx = context.ctx_mut();
+    let ctx = context.ctx_mut()?;
     egui::Window::new("Commands").show(ctx, |ui| {
         if ui.button("Clear Map").clicked() {
-            commands.add(clear_all());
+            commands.queue(clear_all());
         }
         ui.heading("Game start");
         ui.horizontal(|ui| {
@@ -67,10 +71,10 @@ fn commands_ui(
             egui::Slider::new(&mut start_game.turret_count, 0..=20).ui(ui);
         });
         if ui.button("Start").clicked() {
-            commands.add(*start_game);
+            commands.queue(*start_game);
         }
         ui.heading("Garbage");
-        egui::ComboBox::from_id_source("Spawn Garbage Item")
+        egui::ComboBox::from_id_salt("Spawn Garbage Item")
             .selected_text("Spawn Garbage")
             .show_ui(ui, |ui| {
                 for item in GarbageItem::iter() {
@@ -80,7 +84,7 @@ fn commands_ui(
                 }
             });
         if ui.button("Spawn 50 garbage items").clicked() {
-            commands.add(spawn_some_garbage(50, None, None));
+            commands.queue(spawn_some_garbage(50, None, None));
         }
         ui.heading("Builds");
         ui.horizontal(|ui| {
@@ -94,8 +98,8 @@ fn commands_ui(
             .show_ui(ui, |ui| {
                 for (label, handle) in builds.iter() {
                     if ui.button(label).clicked() {
-                        commands.add(SpawnBuild {
-                            handle: handle.clone_weak(),
+                        commands.queue(SpawnBuild {
+                            handle: handle.clone(),
                             position: Vec3::new(pos.x, 1.0, pos.y),
                             angle: *rot,
                         });
@@ -104,11 +108,11 @@ fn commands_ui(
             });
 
         if ui.button("Spawn 10 builds").clicked() {
-            commands.add(spawn_builds(10, None, None));
+            commands.queue(spawn_builds(10, None, None));
         }
 
         if ui.button("Spawn 50 builds").clicked() {
-            commands.add(spawn_builds(50, None, None));
+            commands.queue(spawn_builds(50, None, None));
         }
 
         ui.heading("Enemies");
@@ -117,23 +121,25 @@ fn commands_ui(
             egui::Slider::new(&mut *worm_size, 5..=20).ui(ui);
         });
         if ui.button("Spawn Worm").clicked() {
-            worm_evw.send(SpawnWorm {
+            worm_evw.write(SpawnWorm {
                 size: *worm_size,
                 position: *pos,
             });
         }
         if ui.button("Spawn Turret").clicked() {
-            turret_evw.send(SpawnTurret { position: *pos });
+            turret_evw.write(SpawnTurret { position: *pos });
         }
     });
+    Ok(())
 }
 
 fn players_ui(
-    mut player_connected_evw: EventWriter<PlayerConnected>,
+    mut commands: Commands,
+    mut player_connected_evw: MessageWriter<PlayerConnected>,
     mut context: EguiContexts,
     mut players: Query<(&Player, &ActiveSkill, &SkillState, &mut Health)>,
-) {
-    let ctx = context.ctx_mut();
+) -> Result {
+    let ctx = context.ctx_mut()?;
     let mut player_count = 0_usize;
     egui::Window::new("Players").show(ctx, |ui| {
         egui::ScrollArea::vertical().show(ui, |ui| {
@@ -152,7 +158,7 @@ fn players_ui(
                     ui.end_row();
                 });
                 egui::CollapsingHeader::new("Skills")
-                    .id_source(format!("Skills {}", player.id))
+                    .id_salt(format!("Skills {}", player.id))
                     .show(ui, |ui| {
                         egui::Grid::new("cooldowns").show(ui, |ui| {
                             for (skill, cooldown) in &state.cooldowns {
@@ -167,13 +173,14 @@ fn players_ui(
         });
         ui.spacing();
         if ui.button("Spawn fake player").clicked() {
-            player_connected_evw.send(PlayerConnected(Player {
+            player_connected_evw.write(PlayerConnected(Player {
                 id: player_count as u8,
                 controller: GameController::Gamepad {
                     category: GamepadCategory::Unknown,
-                    gamepad: Gamepad { id: player_count },
+                    gamepad: commands.spawn(()).id(),
                 },
             }));
         }
     });
+    Ok(())
 }

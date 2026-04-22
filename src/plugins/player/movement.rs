@@ -3,7 +3,7 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 use leafwing_input_manager::prelude::*;
 
-use super::{assets::PlayerAssets, input::PlayerInput, Player, PLAYER_HEIGHT, PLAYER_RADIUS};
+use super::{PLAYER_HEIGHT, PLAYER_RADIUS, Player, assets::PlayerAssets, input::PlayerInput};
 
 pub struct PlayerMovementPlugin;
 
@@ -18,12 +18,7 @@ impl Plugin for PlayerMovementPlugin {
                     .run_if(in_state(GameState::Running)),
             );
         #[cfg(feature = "debug")]
-        app.add_systems(
-            PostUpdate,
-            draw_gizmos
-                .after(avian3d::prelude::PhysicsSet::Sync)
-                .before(TransformSystem::TransformPropagate),
-        );
+        app.add_systems(PostUpdate, draw_gizmos.before(TransformSystems::Propagate));
     }
 }
 
@@ -76,7 +71,7 @@ pub fn apply_movement(
     >,
     time: Res<Time>,
 ) {
-    let dt = time.delta_seconds();
+    let dt = time.delta_secs();
     for (mut velocity, action_state, speed) in &mut controllers {
         if let Some(dir) = PlayerInput::get_movement(action_state) {
             velocity.x += dir.x * dt * speed.0;
@@ -91,7 +86,7 @@ fn apply_gravity(
     gravity: Res<Gravity>,
     mut controllers: Query<&mut LinearVelocity, With<MovementSpeed>>,
 ) {
-    let delta_time = time.delta_seconds();
+    let delta_time = time.delta_secs();
     for mut velocity in &mut controllers {
         velocity.0 += gravity.0 * delta_time;
     }

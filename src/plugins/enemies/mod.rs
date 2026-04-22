@@ -1,4 +1,4 @@
-use super::{map::MAP_SIZE, player::Player, spawn_some_garbage, Dead};
+use super::{Dead, map::MAP_SIZE, player::Player, spawn_some_garbage};
 use crate::ObjectLayer;
 use avian3d::prelude::*;
 use bevy::prelude::*;
@@ -10,7 +10,7 @@ mod worm;
 
 use assets::EnemyAssetsPlugin;
 use auto_turret::AutoTurretPlugin;
-use rand::thread_rng;
+use rand::rng;
 use worm::WormPlugin;
 
 const ENEMY_COLOR: Color = Color::BLACK;
@@ -22,8 +22,8 @@ impl Plugin for EnemiesPlugin {
         app.add_plugins((WormPlugin, AutoTurretPlugin, EnemyAssetsPlugin))
             .register_type::<Enemy>()
             .register_type::<TargetPlayer>()
-            .add_event::<SpawnTurret>()
-            .add_event::<SpawnWorm>()
+            .add_message::<SpawnTurret>()
+            .add_message::<SpawnWorm>()
             .add_systems(FixedUpdate, detect_players);
     }
 }
@@ -52,7 +52,7 @@ pub struct TargetPlayer(Vec3);
 
 #[derive(Bundle)]
 pub struct PlayerDetectorBundle {
-    pub spatial: SpatialBundle,
+    pub transform: Transform,
     pub sensor: Sensor,
     pub collider: Collider,
     pub layers: CollisionLayers,
@@ -62,7 +62,7 @@ pub struct PlayerDetectorBundle {
 impl PlayerDetectorBundle {
     pub fn sphere(radius: f32, cooldown: f32) -> Self {
         Self {
-            spatial: SpatialBundle::default(),
+            transform: Transform::default(),
             sensor: Sensor,
             collider: Collider::sphere(radius),
             layers: CollisionLayers::new(ObjectLayer::Enemy, ObjectLayer::Player),
@@ -72,11 +72,8 @@ impl PlayerDetectorBundle {
 
     pub fn cone(cooldown: f32) -> Self {
         Self {
-            spatial: SpatialBundle {
-                transform: Transform::from_xyz(0.0, 0.0, 5.0)
-                    .with_rotation(Quat::from_rotation_y(PI) * Quat::from_rotation_x(FRAC_PI_2)),
-                ..default()
-            },
+            transform: Transform::from_xyz(0.0, 0.0, 5.0)
+                .with_rotation(Quat::from_rotation_y(PI) * Quat::from_rotation_x(FRAC_PI_2)),
             sensor: Sensor,
             collider: Collider::cone(15.0, 15.0),
             layers: CollisionLayers::new(ObjectLayer::Enemy, ObjectLayer::Player),
@@ -88,10 +85,10 @@ impl PlayerDetectorBundle {
 fn detect_players(
     mut commands: Commands,
     time: Res<Time>,
-    mut detectors: Query<(&Parent, &mut PlayerDetector, &CollidingEntities)>,
+    mut detectors: Query<(&ChildOf, &mut PlayerDetector, &CollidingEntities)>,
     players: Query<&GlobalTransform, (With<Player>, Without<Dead>)>,
 ) {
-    let dt = time.delta_seconds();
+    let dt = time.delta_secs();
     for (parent, mut detector, collisions) in &mut detectors {
         detector.last_detection += dt;
         if detector.last_detection < detector.attack_cooldown {
@@ -101,28 +98,30 @@ fn detect_players(
             continue;
         };
         let target = gtr.translation();
-        commands.entity(parent.get()).insert(TargetPlayer(target));
+        commands
+            .entity(parent.parent())
+            .insert(TargetPlayer(target));
         detector.last_detection = 0.0;
     }
 }
 
-#[derive(Event, Reflect)]
+#[derive(Message, Reflect)]
 pub struct SpawnWorm {
     pub size: usize,
     pub position: Vec2,
 }
 
-#[derive(Event, Reflect)]
+#[derive(Message, Reflect)]
 pub struct SpawnTurret {
     pub position: Vec2,
 }
 
 pub fn spawn_enemies(worms: usize, turrets: usize, world: &mut World) {
     let square = Rectangle::new(MAP_SIZE.x - 20.0, MAP_SIZE.y - 20.0);
-    let mut rng = thread_rng();
+    let mut rng = rng();
     for i in 0..worms {
         let position = square.sample_interior(&mut rng);
-        world.send_event(SpawnWorm {
+        world.write_message(SpawnWorm {
             size: 12 + i,
             position,
         });
@@ -130,6 +129,6 @@ pub fn spawn_enemies(worms: usize, turrets: usize, world: &mut World) {
     }
     for _ in 0..turrets {
         let position = square.sample_interior(&mut rng);
-        world.send_event(SpawnTurret { position });
+        world.write_message(SpawnTurret { position });
     }
 }

@@ -1,7 +1,7 @@
 use super::{
+    Dead, Invincible,
     common::Health,
     garbage::{CollectorBundle, CollectorParticlesBundle},
-    Dead, Invincible,
 };
 use crate::{ObjectLayer, ParticleConfig};
 use bevy::prelude::*;
@@ -12,7 +12,7 @@ mod movement;
 mod skills;
 mod ui;
 
-pub use input::{GameController, GamepadCategory, PlayerInput};
+pub use input::{Binding, GameController, GamepadCategory, PlayerInput, PlayerInputs};
 #[cfg(feature = "debug")]
 pub use skills::{ActiveSkill, SkillState};
 
@@ -39,14 +39,14 @@ impl Plugin for PlayerPlugin {
             PlayerSkillsPlugin,
             PlayerUiPlugin,
         ))
-        .add_event::<PlayerConnected>()
+        .add_message::<PlayerConnected>()
         .register_type::<Player>()
         .register_type::<PlayerConnected>()
         .add_systems(Update, spawn_players);
     }
 }
 
-#[derive(Debug, Event, Reflect)]
+#[derive(Debug, Message, Reflect)]
 pub struct PlayerConnected(pub Player);
 
 #[derive(Debug, Component, Clone, Copy, Reflect)]
@@ -57,13 +57,14 @@ pub struct Player {
 
 #[derive(Bundle)]
 pub struct PlayerBundle {
+    pub transform: Transform,
+    pub visibility: Visibility,
     pub player: Player,
     pub name: Name,
     pub health: Health,
     pub input: PlayerInputBundle,
     pub movement: PlayerMovementBundle,
     pub skills: PlayerSkillsBundle,
-    pub spatial: SpatialBundle,
 }
 
 impl PlayerBundle {
@@ -77,7 +78,8 @@ impl PlayerBundle {
             input: PlayerInputBundle::new(player.controller, server),
             movement: PlayerMovementBundle::new(100.0, 0.9),
             skills: PlayerSkillsBundle::new(),
-            spatial: Default::default(),
+            transform: Default::default(),
+            visibility: Visibility::default(),
             player,
         }
     }
@@ -86,7 +88,7 @@ impl PlayerBundle {
 pub fn spawn_players(
     mut commands: Commands,
     players: Query<&GlobalTransform, With<Player>>,
-    mut connected_evr: EventReader<PlayerConnected>,
+    mut connected_evr: MessageReader<PlayerConnected>,
     assets: Res<PlayerAssets>,
     particles: Res<ParticleConfig>,
     asset_server: Res<AssetServer>,
@@ -101,44 +103,36 @@ pub fn spawn_players(
         let color = assets.colors[player.id as usize];
         // Offset
         let mut bundle = PlayerBundle::new(*player, &asset_server);
-        bundle.spatial.transform.translation = position;
+        bundle.transform.translation = position;
 
         let root_entity = commands
             .spawn((
-                SpatialBundle::default(),
+                Transform::default(),
+                Visibility::default(),
                 Name::new(format!("{} Root", bundle.name)),
             ))
             .id();
-        let player_entity = commands.spawn(bundle).set_parent(root_entity).id();
+        let player_entity = commands.spawn((bundle, ChildOf(root_entity))).id();
 
         let collector_entity = commands
-            .spawn(CollectorBundle::growing(
-                4.0,
-                1.0,
-                color,
-                50,
-                ObjectLayer::Player,
+            .spawn((
+                CollectorBundle::growing(4.0, 1.0, color, 50, ObjectLayer::Player),
+                ChildOf(player_entity),
             ))
-            .set_parent(player_entity)
             .id();
-        commands
-            .spawn(CollectorParticlesBundle::new(
-                collector_entity,
-                color,
-                &particles,
-            ))
-            .set_parent(root_entity);
-        commands
-            .spawn(PlayerVisualsBundle::new(player.id as usize, &assets))
-            .set_parent(player_entity);
+        commands.spawn((
+            CollectorParticlesBundle::new(collector_entity, color, &particles),
+            ChildOf(root_entity),
+        ));
+        commands.spawn((
+            PlayerVisualsBundle::new(player.id as usize, &assets),
+            ChildOf(player_entity),
+        ));
         // Marker
-        commands
-            .spawn(PlayerAimMarkerBundle::new(
-                player.id as usize,
-                player_entity,
-                &assets,
-            ))
-            .set_parent(root_entity);
+        commands.spawn((
+            PlayerAimMarkerBundle::new(player.id as usize, player_entity, &assets),
+            ChildOf(root_entity),
+        ));
     }
 }
 

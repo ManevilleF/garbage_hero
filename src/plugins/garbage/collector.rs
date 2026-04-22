@@ -4,11 +4,14 @@ use super::{
 use crate::{GameState, ObjectLayer, ParticleConfig};
 use avian3d::prelude::*;
 use bevy::{
-    ecs::component::{ComponentHooks, StorageType},
+    ecs::{
+        component::{Mutable, StorageType},
+        lifecycle::ComponentHook,
+    },
     log,
     prelude::*,
 };
-use bevy_hanabi::{EffectProperties, EffectSpawner, ParticleEffect, ParticleEffectBundle};
+use bevy_hanabi::{EffectProperties, EffectSpawner, ParticleEffect};
 
 pub struct CollectorPlugin;
 
@@ -24,12 +27,7 @@ impl Plugin for CollectorPlugin {
             .add_systems(PostUpdate, (update_radius, update_particles));
 
         #[cfg(feature = "debug")]
-        app.add_systems(
-            PostUpdate,
-            draw_gizmos
-                .after(avian3d::prelude::PhysicsSet::Sync)
-                .before(TransformSystem::TransformPropagate),
-        );
+        app.add_systems(PostUpdate, draw_gizmos.before(TransformSystems::Propagate));
     }
 }
 
@@ -57,29 +55,34 @@ pub struct OnCollectedFilterOut {
 
 impl Component for Collector {
     const STORAGE_TYPE: StorageType = StorageType::Table;
+    type Mutability = Mutable;
 
-    fn register_component_hooks(hooks: &mut ComponentHooks) {
-        hooks.on_remove(|mut world, entity, _| {
-            let Some(collector) = world.get::<Self>(entity) else {
-                log::error!("on_remove hook triggered for {entity:?} without `Collector`");
+    fn on_remove() -> Option<ComponentHook> {
+        Some(|mut world, ctx| {
+            let Some(collector) = world.get::<Self>(ctx.entity) else {
+                log::error!(
+                    "on_remove hook triggered for {:?} without `Collector`",
+                    ctx.entity
+                );
                 return;
             };
             let collected = collector.collected.clone();
             let mut commands = world.commands();
             for entity in collected {
-                if let Some(mut cmd) = commands.get_entity(entity) {
+                if let Ok(mut cmd) = commands.get_entity(entity) {
                     cmd.remove::<Collected>();
                 }
             }
-        });
+        })
     }
 }
 
 #[derive(Bundle)]
 pub struct CollectorBundle {
-    pub spatial: SpatialBundle,
+    pub transform: Transform,
     pub collector: Collector,
     pub config: CollectorConfig,
+    pub colliding_entities: CollidingEntities,
     pub collider: Collider,
     pub sensor: Sensor,
     pub layer: CollisionLayers,
@@ -97,8 +100,9 @@ impl CollectorBundle {
         on_collected_filter: ObjectLayer,
     ) -> Self {
         Self {
-            spatial: SpatialBundle::default(),
+            transform: Transform::default(),
             collider: Collider::sphere(1.0),
+            colliding_entities: Default::default(),
             sensor: Sensor,
             collector: Collector::fixed(collector_radius, max_distance, max_items, max_points),
             layer: CollisionLayers::new(ObjectLayer::Collector, [ObjectLayer::Collectible]),
@@ -121,8 +125,9 @@ impl CollectorBundle {
         on_collected_filter: ObjectLayer,
     ) -> Self {
         Self {
-            spatial: SpatialBundle::default(),
+            transform: Transform::default(),
             collider: Collider::sphere(1.0),
+            colliding_entities: Default::default(),
             sensor: Sensor,
             collector: Collector::growing(min_radius, max_distance, max_items),
             layer: CollisionLayers::new(ObjectLayer::Collector, [ObjectLayer::Collectible]),
@@ -145,7 +150,8 @@ pub struct CollectorParticles(pub Entity);
 #[derive(Bundle)]
 pub struct CollectorParticlesBundle {
     pub collector: CollectorParticles,
-    pub particles: ParticleEffectBundle,
+    pub effect: ParticleEffect,
+    pub effect_properties: EffectProperties,
     pub name: Name,
 }
 
@@ -153,12 +159,9 @@ impl CollectorParticlesBundle {
     pub fn new(collector_entity: Entity, color: Color, particles: &ParticleConfig) -> Self {
         Self {
             collector: CollectorParticles(collector_entity),
-            particles: ParticleEffectBundle {
-                effect: ParticleEffect::new(particles.collector_effect.clone()),
-                effect_properties: EffectProperties::default()
-                    .with_properties([("color".to_owned(), ParticleConfig::color_to_value(color))]),
-                ..default()
-            },
+            effect: ParticleEffect::new(particles.collector_effect.clone()),
+            effect_properties: EffectProperties::default()
+                .with_properties([("color".to_owned(), ParticleConfig::color_to_value(color))]),
             name: Name::new(format!("Collector {collector_entity:?} particles")),
         }
     }
@@ -221,17 +224,17 @@ impl Collector {
     }
 
     #[inline]
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.collected.len()
     }
 
     #[inline]
-    pub fn points_len(&self) -> usize {
+    pub const fn points_len(&self) -> usize {
         self.distribution.len()
     }
 
     #[inline]
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.collected.is_empty()
     }
 
@@ -281,7 +284,7 @@ impl Collector {
         self.shape
     }
 
-    pub fn throw_collected(&self, direction: Dir2, force: f32) -> Option<impl FnOnce(&mut World)> {
+    pub fn throw_collected(&self, direction: Dir2, force: f32) -> Option<ThrowCollectedCmd> {
         let (index, _) = self.distribution.find_closest_aligned_point(direction)?;
         let Some(entity) = self.collected.get(index).copied() else {
             log::error!(
@@ -291,21 +294,34 @@ impl Collector {
             return None;
         };
         let direction = Vec3::new(direction.x, 0.0, direction.y);
-        Some(move |world: &mut World| {
-            let mass = world
-                .get::<ColliderMassProperties>(entity)
-                .map(|p| p.mass.0)
-                .unwrap_or(1.0);
-            if let Some(collected) = world.get::<Collected>(entity) {
-                let collector_entity = collected.collector_entity;
-                let mut entity_cmd = world.entity_mut(entity);
-                entity_cmd.remove::<Collected>().insert((
-                    LinearVelocity::default(),
-                    ExternalImpulse::new(direction * force * mass),
-                    ThrownItem::new(collector_entity),
-                ));
-            }
+        Some(ThrowCollectedCmd {
+            entity,
+            direction,
+            force,
         })
+    }
+}
+
+pub struct ThrowCollectedCmd {
+    entity: Entity,
+    direction: Vec3,
+    force: f32,
+}
+
+impl Command for ThrowCollectedCmd {
+    fn apply(self, world: &mut World) {
+        let mass = world
+            .get::<ColliderMassProperties>(self.entity)
+            .map(|p| p.mass)
+            .unwrap_or(1.0);
+        if let Some(collected) = world.get::<Collected>(self.entity) {
+            let collector_entity = collected.collector_entity;
+            let mut entity_cmd = world.entity_mut(self.entity);
+            entity_cmd.remove::<Collected>().insert(ThrownItem::new(
+                collector_entity,
+                self.direction * self.force * mass,
+            ));
+        }
     }
 }
 
@@ -329,14 +345,14 @@ fn update_particles(
     for (entity, mut tr, mut spawner, mut properties, target) in &mut particles {
         let Ok((gtr, collector, config)) = collectors.get(target.0) else {
             log::error!("Collector particles target is invalid");
-            spawner.set_active(false);
-            if let Some(mut cmd) = commands.get_entity(entity) {
+            spawner.active = false;
+            if let Ok(mut cmd) = commands.get_entity(entity) {
                 cmd.despawn();
             }
             continue;
         };
         tr.translation = gtr.translation();
-        spawner.set_active(config.enabled);
+        spawner.active = config.enabled;
         if collector.is_changed() {
             properties.set("radius", collector.radius().into());
         }
@@ -374,7 +390,7 @@ fn update_collected_position(
 }
 
 fn auto_rotate(time: Res<Time>, mut collectors: Query<(&GlobalTransform, &mut Collector)>) {
-    let dt = time.delta_seconds();
+    let dt = time.delta_secs();
     for (gtr, mut collector) in &mut collectors {
         match collector.shape {
             DistributionShape::Circle => {
@@ -417,8 +433,14 @@ fn draw_gizmos(
     let color = Color::Srgba(DARK_GRAY);
 
     for (gt, collector, body) in &collectors {
+        use std::f32::consts::FRAC_PI_2;
+
         let translation = gt.translation();
-        gizmos.circle(translation, Dir3::Y, collector.radius(), color);
+        gizmos.circle(
+            Isometry3d::new(translation, Quat::from_rotation_z(FRAC_PI_2)),
+            collector.radius(),
+            color,
+        );
         let positions = match body {
             Some(b) => b.compute_3d_positions(collector.len(), &collector.distribution),
             None => collector
@@ -429,7 +451,7 @@ fn draw_gizmos(
                 .collect(),
         };
         for pos in positions {
-            gizmos.sphere(pos, Quat::IDENTITY, 0.2, color);
+            gizmos.sphere(Isometry3d::from_translation(pos), 0.2, color);
         }
     }
 }

@@ -1,10 +1,13 @@
 use std::ops::DerefMut;
 
-use super::{map::MAP_SIZE, player::Player, Dead};
-use avian3d::prelude::PhysicsSet;
+use super::{Dead, map::MAP_SIZE, player::Player};
 use bevy::{
-    core_pipeline::tonemapping::Tonemapping, ecs::system::SystemParam, pbr, prelude::*,
-    render::camera::ScalingMode, window::PrimaryWindow,
+    camera::ScalingMode,
+    core_pipeline::tonemapping::Tonemapping,
+    ecs::system::SystemParam,
+    pbr::{ScreenSpaceAmbientOcclusion, ScreenSpaceAmbientOcclusionQualityLevel},
+    prelude::*,
+    window::PrimaryWindow,
 };
 
 const CAM_SCALE_COEF: f32 = 0.001;
@@ -21,9 +24,7 @@ impl Plugin for CameraPlugin {
             .add_systems(Startup, spawn_camera)
             .add_systems(
                 PostUpdate,
-                follow_players
-                    .after(PhysicsSet::Sync)
-                    .before(TransformSystem::TransformPropagate),
+                follow_players.before(TransformSystems::Propagate),
             );
     }
 }
@@ -39,34 +40,31 @@ pub struct CameraParams<'w, 's> {
 
 impl<'w, 's> CameraParams<'w, 's> {
     pub fn mouse_ray(&self) -> Option<Ray3d> {
-        let (cam_gtr, camera) = self.camera.single();
+        let (cam_gtr, camera) = self.camera.single().ok()?;
         self.window
-            .get_single()
+            .single()
             .ok()
             .and_then(|w| w.cursor_position())
-            .and_then(|p| camera.viewport_to_world(cam_gtr, p))
+            .and_then(|p| camera.viewport_to_world(cam_gtr, p).ok())
     }
 }
 
 pub fn spawn_camera(mut commands: Commands) {
     commands.spawn((
-        Camera3dBundle {
-            transform: Transform::from_translation(CAM_OFFSET).looking_at(Vec3::ZERO, Dir3::Y),
-            projection: Projection::Orthographic(OrthographicProjection {
-                scaling_mode: ScalingMode::WindowSize(1.0),
-                scale: CAM_MIN_SCALE,
-                near: -100.0,
-                ..default()
-            }),
-            tonemapping: Tonemapping::TonyMcMapface,
+        Camera3d::default(),
+        Transform::from_translation(CAM_OFFSET).looking_at(Vec3::ZERO, Dir3::Y),
+        Projection::Orthographic(OrthographicProjection {
+            scaling_mode: ScalingMode::WindowSize,
+            scale: CAM_MIN_SCALE,
+            near: -100.0,
+            ..OrthographicProjection::default_3d()
+        }),
+        Tonemapping::TonyMcMapface,
+        ScreenSpaceAmbientOcclusion {
+            quality_level: ScreenSpaceAmbientOcclusionQualityLevel::Medium,
             ..default()
         },
-        pbr::ScreenSpaceAmbientOcclusionBundle {
-            settings: pbr::ScreenSpaceAmbientOcclusionSettings {
-                quality_level: pbr::ScreenSpaceAmbientOcclusionQualityLevel::Medium,
-            },
-            ..default()
-        },
+        Msaa::Off,
         Name::new("Game Camera"),
         GameCamera,
         IsDefaultUiCamera,
@@ -78,7 +76,7 @@ pub fn follow_players(
     players: Query<&GlobalTransform, (With<Player>, Without<Dead>)>,
     mut cameras: Query<(&mut Transform, &mut Projection), With<GameCamera>>,
 ) {
-    let Ok((mut cam_tr, mut projection)) = cameras.get_single_mut() else {
+    let Ok((mut cam_tr, mut projection)) = cameras.single_mut() else {
         return;
     };
     let Projection::Orthographic(projection) = projection.deref_mut() else {
@@ -91,7 +89,7 @@ pub fn follow_players(
         min = min.min(pos);
         max = max.max(pos);
     }
-    let dt = time.delta_seconds();
+    let dt = time.delta_secs();
     // Translation
     let center = (max + min) / 2.0;
     let target = Vec3::new(center.x, 0.0, center.y) + CAM_OFFSET;

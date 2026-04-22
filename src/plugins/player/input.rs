@@ -1,13 +1,13 @@
-use super::{skills::PlayerSkill, Player, PlayerConnected};
-use crate::{plugins::ui::input_icons::InputMapIcons, PauseGame};
+use super::{Player, PlayerConnected, skills::PlayerSkill};
+use crate::{PauseGame, plugins::ui::input_icons::InputMapIcons};
 use bevy::{
     input::{
         gamepad::{GamepadConnection, GamepadConnectionEvent},
         keyboard::KeyboardInput,
     },
     log,
+    platform::collections::HashMap,
     prelude::*,
-    utils::HashMap,
 };
 use leafwing_input_manager::prelude::*;
 use std::fmt::Display;
@@ -23,11 +23,11 @@ impl Plugin for PlayerInputPlugin {
     }
 }
 
-#[derive(Debug, Clone, Copy, Reflect, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Reflect, PartialEq, Eq, Hash, Component)]
 pub enum GameController {
     KeyBoard,
     Gamepad {
-        gamepad: Gamepad,
+        gamepad: Entity,
         category: GamepadCategory,
     },
 }
@@ -64,23 +64,28 @@ impl Display for GameController {
             "{}",
             match self {
                 Self::KeyBoard => String::from("Keyboard"),
-                Self::Gamepad { gamepad, category } => format!("{category} Gamepad {}", gamepad.id),
+                Self::Gamepad { gamepad, category } => format!("{category} Gamepad {:?}", gamepad),
             }
         )
     }
 }
 #[derive(Bundle)]
 pub struct PlayerInputBundle {
-    pub input: InputManagerBundle<PlayerInput>,
+    pub controller: GameController,
+    pub inputs: PlayerInputs,
+    pub map: InputMap<PlayerInput>,
     pub icons: InputMapIcons,
 }
 
 impl PlayerInputBundle {
     pub fn new(controller: GameController, server: &AssetServer) -> Self {
-        let map = PlayerInput::input_map(controller);
-        let icons = InputMapIcons::new(&map, &controller, server);
+        let inputs = PlayerInputs::new(controller);
+        let map = PlayerInput::input_map(controller, &inputs);
+        let icons = InputMapIcons::new(&inputs, &controller, server);
         Self {
-            input: InputManagerBundle::with_map(map),
+            controller,
+            inputs,
+            map,
             icons,
         }
     }
@@ -89,10 +94,74 @@ impl PlayerInputBundle {
 #[derive(Debug, Clone, Copy, Actionlike, PartialEq, Eq, Reflect, Hash)]
 #[non_exhaustive]
 pub enum PlayerInput {
+    #[actionlike(DualAxis)]
     Move,
+    #[actionlike(DualAxis)]
     Aim,
     Pause,
     Skill(PlayerSkill),
+}
+
+#[derive(Debug, Clone, Component)]
+pub struct PlayerInputs(pub(crate) HashMap<PlayerInput, Binding>);
+
+#[derive(Debug, Clone)]
+pub enum Binding {
+    KeyCode(KeyCode),
+    Keys(Vec<KeyCode>),
+    GamepadButton(GamepadButton),
+    MouseMove,
+    MouseButton(MouseButton),
+    LeftSick,
+    RightStick,
+    Dpad,
+    Wasd,
+    ArrowKeys,
+}
+
+impl PlayerInputs {
+    pub fn new(controller: GameController) -> Self {
+        let mut map = HashMap::new();
+        use PlayerInput::*;
+        use PlayerSkill::*;
+
+        match controller {
+            GameController::Gamepad { .. } => {
+                map.extend([
+                    (Move, Binding::LeftSick),
+                    (Move, Binding::Dpad),
+                    (Aim, Binding::RightStick),
+                    (Skill(Collect), Binding::GamepadButton(GamepadButton::South)),
+                    (
+                        Skill(Shoot),
+                        Binding::GamepadButton(GamepadButton::RightTrigger2),
+                    ),
+                    (
+                        Skill(Defend),
+                        Binding::GamepadButton(GamepadButton::LeftTrigger2),
+                    ),
+                    (Skill(Dash), Binding::GamepadButton(GamepadButton::East)),
+                    (Pause, Binding::GamepadButton(GamepadButton::Start)),
+                ]);
+            }
+            GameController::KeyBoard => {
+                map.extend([
+                    (Move, Binding::ArrowKeys),
+                    (Move, Binding::Wasd),
+                    (Aim, Binding::MouseMove),
+                    (
+                        Skill(Collect),
+                        Binding::Keys(vec![KeyCode::ShiftLeft, KeyCode::ShiftRight]),
+                    ),
+                    (Skill(Shoot), Binding::MouseButton(MouseButton::Left)),
+                    (Skill(Defend), Binding::MouseButton(MouseButton::Right)),
+                    (Skill(Dash), Binding::KeyCode(KeyCode::Space)),
+                    (Pause, Binding::KeyCode(KeyCode::Escape)),
+                ]);
+            }
+        }
+        Self(map)
+    }
 }
 
 impl Display for PlayerInput {
@@ -111,66 +180,77 @@ impl Display for PlayerInput {
 }
 
 impl PlayerInput {
-    pub fn input_map(controller: GameController) -> InputMap<Self> {
-        use PlayerInput::*;
-        use PlayerSkill::*;
-
+    pub fn input_map(controller: GameController, inputs: &PlayerInputs) -> InputMap<Self> {
         let mut map = InputMap::default();
+        for (input, binding) in inputs.0.iter() {
+            match binding {
+                Binding::KeyCode(key) => {
+                    map.insert(*input, *key);
+                }
+                Binding::Keys(keys) => {
+                    map.insert_one_to_many(*input, keys.clone());
+                }
+                Binding::GamepadButton(button) => {
+                    map.insert(*input, *button);
+                }
+                Binding::MouseMove => {
+                    map.insert_dual_axis(*input, MouseMove::default());
+                }
+                Binding::MouseButton(button) => {
+                    map.insert(*input, *button);
+                }
+                Binding::LeftSick => {
+                    map.insert_dual_axis(*input, GamepadStick::LEFT);
+                }
+                Binding::RightStick => {
+                    map.insert_dual_axis(*input, GamepadStick::RIGHT);
+                }
+                Binding::Dpad => {
+                    map.insert_dual_axis(*input, VirtualDPad::dpad());
+                }
+                Binding::Wasd => {
+                    map.insert_dual_axis(*input, VirtualDPad::wasd());
+                }
+                Binding::ArrowKeys => {
+                    map.insert_dual_axis(*input, VirtualDPad::arrow_keys());
+                }
+            }
+        }
+
         match controller {
             GameController::Gamepad { gamepad, .. } => {
-                map.set_gamepad(gamepad)
-                    .insert(Pause, GamepadButtonType::Start)
-                    .insert(Move, DualAxis::left_stick())
-                    .insert(Move, VirtualDPad::dpad())
-                    .insert(Aim, DualAxis::right_stick())
-                    .insert(Skill(Collect), GamepadButtonType::South)
-                    .insert(Skill(Shoot), GamepadButtonType::RightTrigger2)
-                    .insert(Skill(Defend), GamepadButtonType::LeftTrigger2)
-                    .insert(Skill(Dash), GamepadButtonType::East);
+                map.set_gamepad(gamepad);
             }
-            GameController::KeyBoard => {
-                map.insert(Pause, KeyCode::Escape)
-                    .insert(Move, VirtualDPad::arrow_keys())
-                    .insert(Move, VirtualDPad::wasd())
-                    .insert(Aim, DualAxis::mouse_motion())
-                    .insert_one_to_many(Skill(Collect), [KeyCode::ShiftLeft, KeyCode::ShiftRight])
-                    .insert(Skill(Shoot), MouseButton::Left)
-                    .insert(Skill(Defend), MouseButton::Right)
-                    .insert(Skill(Dash), KeyCode::Space);
-            }
+            GameController::KeyBoard => {}
         }
         map
     }
 
     pub fn get_movement(state: &ActionState<Self>) -> Option<Vec2> {
-        if state.pressed(&Self::Move) {
-            let dir = state.clamped_axis_pair(&Self::Move)?.xy().try_normalize()?;
-            return Some(dir);
-        }
-        None
+        state.clamped_axis_pair(&Self::Move).xy().try_normalize()
     }
 }
 
 pub fn handle_new_controllers(
-    mut gamepad_evr: EventReader<GamepadConnectionEvent>,
-    mut keyboard_evr: EventReader<KeyboardInput>,
+    mut gamepad_evr: MessageReader<GamepadConnectionEvent>,
+    mut keyboard_evr: MessageReader<KeyboardInput>,
     players: Query<&Player>,
-    mut player_connected_evw: EventWriter<PlayerConnected>,
+    mut player_connected_evw: MessageWriter<PlayerConnected>,
 ) {
     let players: HashMap<GameController, u8> =
         players.iter().map(|p| (p.controller, p.id)).collect();
     let new_player_id = || players.values().max().copied().map(|v| v + 1).unwrap_or(0);
     for event in gamepad_evr.read() {
         match &event.connection {
-            GamepadConnection::Connected(info) => {
-                let category = GamepadCategory::from_name(&info.name);
+            GamepadConnection::Connected { name, .. } => {
+                let category = GamepadCategory::from_name(name);
                 let controller = GameController::Gamepad {
                     gamepad: event.gamepad,
                     category,
                 };
                 log::info!("New controller detected: {controller}");
                 if !players.contains_key(&controller) {
-                    player_connected_evw.send(PlayerConnected(Player {
+                    player_connected_evw.write(PlayerConnected(Player {
                         controller,
                         id: new_player_id(),
                     }));
@@ -184,7 +264,7 @@ pub fn handle_new_controllers(
     }
     if players.get(&GameController::KeyBoard).is_none() && !keyboard_evr.is_empty() {
         log::info!("Keyboard controller detected");
-        player_connected_evw.send(PlayerConnected(Player {
+        player_connected_evw.write(PlayerConnected(Player {
             controller: GameController::KeyBoard,
             id: new_player_id(),
         }));
@@ -194,12 +274,12 @@ pub fn handle_new_controllers(
 
 fn pause_game(
     players: Query<(&Player, &ActionState<PlayerInput>)>,
-    mut pause_evw: EventWriter<PauseGame>,
+    mut pause_evw: MessageWriter<PauseGame>,
 ) {
     for (player, state) in &players {
         if state.just_pressed(&PlayerInput::Pause) {
             log::info!("Pause triggered by player {}", player.id);
-            pause_evw.send_default();
+            pause_evw.write_default();
         }
     }
 }
