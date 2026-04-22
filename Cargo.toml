@@ -45,8 +45,41 @@ features = ["3d"]
 version = "0.18"
 default-features = false
 features = [
-    "3d",
-    "ui",
+    "async_executor",
+    "bevy_asset",
+    "bevy_input_focus",
+    "bevy_log",
+    "bevy_state",
+    "bevy_window",
+    "reflect_auto_register",
+    "std",
+    "bevy_gilrs",
+    "bevy_winit",
+    "default_font",
+    "multi_threaded",
+    "webgl2",
+    "x11",
+    "wayland",
+    "sysinfo_plugin",
+    "bevy_render",
+    "bevy_core_pipeline",
+    "bevy_gizmos_render",
+    "bevy_anti_alias",
+    "bevy_gltf",
+    "bevy_pbr",
+    "bevy_post_process",
+    "common_api",
+    "bevy_light",
+    "bevy_mikktspace",
+    # "ktx2",
+    # "morph_animation",
+    # "morph",
+    "smaa_luts",
+    "tonemapping_luts",
+    "zstd_rust",
+    "gltf_animation",
+    "bevy_ui",
+    "bevy_ui_render",
     "jpeg",
 ]
 
@@ -72,6 +105,6 @@ opt-level = 1
 
 [profile.release]
 codegen-units = 1
-lto = "thin"
+lto = true
 panic = "abort"
 strip = "debuginfo"
